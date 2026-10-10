@@ -491,6 +491,7 @@ int main(int argc, char **argv)
         goto end;
     }
     start_main_loop(loop_function, window);
+    settings_save(); // Remember the detached panels.
 end:
     glfwTerminate();
     goxel_release();

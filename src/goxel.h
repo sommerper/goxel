@@ -663,6 +663,10 @@ int gox_iter_infos(const char *path,
 void settings_load(void);
 void settings_save(void);
 
+// Restore / save the detached (floating) panels from the settings file.
+void gui_app_load_panel(const char *name, const char *value);
+void gui_app_save_panels(FILE *file);
+
 void goxel_add_recent_file(const char *path);
 
 /*

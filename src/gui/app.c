@@ -81,6 +81,7 @@ static struct {
     int icon;
     void (*fn)(void);
     bool detached;
+    float x, y; // Position when detached.
 } PANELS[] = {
     [PANEL_TOOLS]       = {N_("Tools"), ICON_TOOLS, gui_tools_panel},
     [PANEL_PALETTE]     = {N_("Palette"), ICON_PALETTE, gui_palette_panel},
@@ -101,6 +102,31 @@ static struct {
     [PANEL_DEBUG]       = {N_("Debug"), ICON_DEBUG, gui_debug_panel},
 #endif
 };
+
+// Set after the first frame, so that reloading the settings (on new / open
+// file) doesn't revert the panels to their startup state.
+static bool g_started = false;
+
+void gui_app_load_panel(const char *name, const char *value)
+{
+    int i;
+    if (g_started) return;
+    for (i = 1; i < (int)ARRAY_SIZE(PANELS); i++) {
+        if (!PANELS[i].name || strcmp(PANELS[i].name, name) != 0) continue;
+        PANELS[i].detached =
+            sscanf(value, "%f %f", &PANELS[i].x, &PANELS[i].y) == 2;
+    }
+}
+
+void gui_app_save_panels(FILE *file)
+{
+    int i;
+    for (i = 1; i < (int)ARRAY_SIZE(PANELS); i++) {
+        if (PANELS[i].detached)
+            fprintf(file, "%s=%f %f\n", PANELS[i].name, PANELS[i].x,
+                    PANELS[i].y);
+    }
+}
 
 typedef struct filter_layout_state filter_layout_state_t;
 
@@ -231,8 +257,10 @@ void gui_app(void)
     int i;
     filter_layout_state_t filter_layout_state;
     const float item_height = gui_get_item_height();
+    gui_window_ret_t win;
 
     goxel.show_export_viewport = false;
+    g_started = true;
 
     if (GUI_HAS_MENU) {
         if (gui_menu_bar_begin()) {
@@ -273,13 +301,15 @@ void gui_app(void)
     for (i = 0; i < ARRAY_SIZE(PANELS); i++) {
         if (!PANELS[i].detached) continue;
         name = tr(PANELS[i].name);
-        gui_window_begin(name, 0, 0, goxel.gui.panel_width, 0,
-                         GUI_WINDOW_MOVABLE);
+        gui_window_begin(name, PANELS[i].x, PANELS[i].y,
+                         goxel.gui.panel_width, 0, GUI_WINDOW_MOVABLE);
         if (gui_panel_header(name)) {
             PANELS[i].detached = false;
         }
         PANELS[i].fn();
-        gui_window_end();
+        win = gui_window_end();
+        PANELS[i].x = win.x;
+        PANELS[i].y = win.y;
     }
 
     filter_layout_state.next_x = x + goxel.gui.panel_width +

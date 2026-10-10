@@ -263,6 +263,9 @@ static int settings_ini_handler(void *user, const char *section,
     if (strcmp(section, "keymaps") == 0) {
         add_keymap(name, value);
     }
+    if (strcmp(section, "panels") == 0) {
+        gui_app_load_panel(name, value);
+    }
     if (strcmp(section, "inputs") == 0) {
         if (strcmp(name, "emulate_three_buttons_mouse") == 0) {
             if (strcmp(value, "alt") == 0) {
@@ -362,6 +365,9 @@ void settings_save(void)
     fprintf(file, "\n");
     save_keymaps(file);
     fprintf(file, "\n");
+
+    fprintf(file, "[panels]\n");
+    gui_app_save_panels(file);
 
     fclose(file);
 }

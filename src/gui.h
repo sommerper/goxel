@@ -42,6 +42,8 @@ enum {
 typedef struct {
     float h;
     float w;
+    float x;
+    float y;
 } gui_window_ret_t;
 
 float gui_get_scale(void);

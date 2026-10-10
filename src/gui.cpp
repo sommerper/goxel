@@ -893,6 +893,8 @@ gui_window_ret_t gui_window_end(void)
     }
     ret.h = ImGui::GetWindowHeight();
     ret.w = ImGui::GetWindowWidth();
+    ret.x = ImGui::GetWindowPos().x;
+    ret.y = ImGui::GetWindowPos().y;
     ImGui::End();
     ImGui::PopID();
 
