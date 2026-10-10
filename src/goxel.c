@@ -1441,7 +1441,10 @@ int goxel_export_to_file(const char *path, const char *format)
     char *new_export_path;
 
     f = file_format_get(path, format, "w");
-    if (!f) return -1;
+    if (!f) {
+        LOG_E("Cannot find export format for %s", format ? format : path);
+        return -1;
+    }
     if (!path) {
         get_export_path(f, name, sizeof(name));
         path = sys_get_save_path(name, f->exts, f->exts_desc);

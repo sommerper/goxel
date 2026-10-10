@@ -104,6 +104,7 @@ typedef struct
 {
     char *input;
     char *export;
+    char *format;
     float scale;
 
     const char *script;
@@ -126,6 +127,8 @@ typedef struct {
 static const gox_option_t OPTIONS[] = {
     {"export", 'e', required_argument, "FILENAME",
         .help="Export the image to a file"},
+    {"format", 'f', required_argument, "NAME",
+        .help="Export format, e.g. \"png slices\" (default: from extension)"},
     {"scale", 's', required_argument, "FLOAT", .help="Set UI scale"},
     {"script", OPT_SCRIPT, required_argument, "FILENAME",
         .help="Run a script and exit"},
@@ -176,11 +179,14 @@ static void parse_options(int argc, char **argv, args_t *args)
     }
 
     while (true) {
-        c = getopt_long(argc, argv, "e:s:", long_options, &option_index);
+        c = getopt_long(argc, argv, "e:f:s:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
         case 'e':
             args->export = optarg;
+            break;
+        case 'f':
+            args->format = optarg;
             break;
         case 's':
             args->scale = atof(optarg);
@@ -480,7 +486,7 @@ int main(int argc, char **argv)
             LOG_E("trying to export an empty image");
             ret = -1;
         } else {
-            ret = goxel_export_to_file(args.export, NULL);
+            ret = goxel_export_to_file(args.export, args.format);
         }
         goto end;
     }
