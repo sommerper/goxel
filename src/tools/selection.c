@@ -28,6 +28,11 @@ typedef struct {
     int     mode; // MODE_REPLACE | MODE_OVER | MODE_SUB
     int     current_mode; // The mode for the current box only.
 
+    // Ctrl + gizmo arrow drag: move the selected voxels with the box.
+    volume_t *start_volume;  // Layer volume without the selected voxels.
+    volume_t *start_content; // The selected voxels.
+    float   start_pos[3];
+
 } tool_selection_t;
 
 static void get_rect(const float pos[3], const float normal[3],
@@ -60,6 +65,39 @@ static void update_mask(tool_selection_t *tool)
     volume_merge(img->selection_mask, tmp, tool->current_mode, painter.color);
     volume_delete(tmp);
     image_history_push(goxel.image);
+}
+
+// Same as the move tool: put the selected voxels back at the box offset.
+static void move_content(tool_selection_t *tool, int state)
+{
+    image_t *img = goxel.image;
+    volume_t *volume = img->active_layer->volume;
+    volume_t *tmp;
+    float transf[4][4] = MAT4_IDENTITY;
+
+    if (!tool->start_volume) {
+        tool->start_volume = volume_copy(volume);
+        volume_merge(tool->start_volume, img->selection_mask, MODE_SUB, NULL);
+        tool->start_content = volume_copy(volume);
+        volume_merge(tool->start_content, img->selection_mask,
+                     MODE_INTERSECT, NULL);
+    }
+
+    vec3_sub(img->selection_box[3], tool->start_pos, transf[3]);
+    tmp = volume_copy(tool->start_content);
+    volume_move(tmp, transf);
+    volume_set(volume, tool->start_volume);
+    volume_merge(volume, tmp, MODE_OVER, NULL);
+    volume_delete(tmp);
+
+    if (state == GESTURE3D_STATE_END) {
+        volume_move(img->selection_mask, transf);
+        volume_delete(tool->start_volume);
+        volume_delete(tool->start_content);
+        tool->start_volume = NULL;
+        tool->start_content = NULL;
+        image_history_push(img);
+    }
 }
 
 static int on_hover(gesture3d_t *gest)
@@ -157,10 +195,23 @@ static int iter(tool_t *tool, const painter_t *painter,
     snap_mask &= ~(SNAP_SELECTION_IN | SNAP_SELECTION_OUT);
 
     box_edit_state = box_edit(
-            img->selection_box, GIZMO_TRANSLATION | GIZMO_GROW, transf);
+            img->selection_box,
+            GIZMO_TRANSLATION | GIZMO_GROW | GIZMO_MOVE_CONTENT, transf);
     if (box_edit_state) {
+        if (box_edit_state == GESTURE3D_STATE_BEGIN)
+            vec3_copy(img->selection_box[3], selection->start_pos);
         mat4_mul(transf, img->selection_box, img->selection_box);
-        if (box_edit_state == GESTURE3D_STATE_END) {
+        // Only the arrows accept Ctrl, so this is a Ctrl + arrow drag.  Ctrl
+        // may come down mid-drag (a home-row mod only sends it after its
+        // hold timeout): the content then jumps to follow the box.
+        if (    selection->start_volume || (
+                box_edit_state != GESTURE3D_STATE_END &&
+                img->selection_mask &&
+                image_layer_can_edit(img, img->active_layer) &&
+                (gui_is_key_down(KEY_LEFT_CONTROL) ||
+                 gui_is_key_down(KEY_RIGHT_CONTROL)))) {
+            move_content(selection, box_edit_state);
+        } else if (box_edit_state == GESTURE3D_STATE_END) {
             update_mask(selection);
         }
         return 0;

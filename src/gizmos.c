@@ -147,6 +147,10 @@ static int on_drag(gesture3d_t *gest)
 static int on_gizmo_hover(gesture3d_t *gest)
 {
     goxel_add_hint(HINT_LARGE, GLYPH_MOUSE_LMB, _("Drag to move"));
+    if (g_data.flags & GIZMO_GROW)
+        goxel_add_hint(0, "Shift+" GLYPH_MOUSE_LMB, _("Resize"));
+    if (g_data.flags & GIZMO_MOVE_CONTENT)
+        goxel_add_hint(0, "Ctrl+" GLYPH_MOUSE_LMB, _("Move content"));
     g_data.snap_face = gest->user_key;
     g_data.flags |= FLAG_SNAP_GIZMO;
     return 0;
@@ -154,7 +158,7 @@ static int on_gizmo_hover(gesture3d_t *gest)
 
 static int on_gizmo_drag(gesture3d_t *gest)
 {
-    float v[3];
+    float v[3], face_plane[4][4];
     int face = gest->user_key;
     float box[4][4];
 
@@ -173,7 +177,17 @@ static int on_gizmo_drag(gesture3d_t *gest)
     v[1] = round(v[1]);
     v[2] = round(v[2]);
     mat4_copy(g_data.start_box, box);
-    vec3_add(box[3], v, box[3]);
+    // Shift: only move the arrow's face, growing the box in its direction.
+    if ((g_data.flags & GIZMO_GROW) &&
+            (gest->flags & GESTURE3D_FLAG_SHIFT) &&
+            !(gest->flags & GESTURE3D_FLAG_CTRL)) {
+        mat4_mul(g_data.start_box, FACES_MATS[face], face_plane);
+        vec3_add(face_plane[3], v, face_plane[3]);
+        box_move_face(g_data.start_box, face, face_plane[3], box);
+        if (box_get_volume(box) == 0) return 0;
+    } else {
+        vec3_add(box[3], v, box[3]);
+    }
     get_transf(g_data.box, box, g_data.transf);
 
     return 0;
@@ -207,20 +221,24 @@ static void gizmo(const float box[4][4], int face)
     float shape[4][4];
     float alpha = 0.5;
     float scale;
+    bool move_content = g_data.flags & GIZMO_MOVE_CONTENT;
+    bool ctrl = gui_is_key_down(KEY_LEFT_CONTROL) ||
+                gui_is_key_down(KEY_RIGHT_CONTROL);
 
     // Compute the gizmo arrow shape.
     mat4_mul(box, FACES_MATS[face], shape);
     vec3_normalize(shape[0], shape[0]);
     vec3_normalize(shape[1], shape[1]);
     vec3_normalize(shape[2], shape[2]);
-    mat4_iscale(shape, 0.5, 0.5, 1.0);
+    // Longer arrows show that Ctrl + drag will move the content.
+    mat4_iscale(shape, 0.5, 0.5, (move_content && ctrl) ? 1.6 : 1.0);
 
     scale = compute_gizmo_scale(shape[3]);
     mat4_iscale(shape, scale, scale, scale);
 
     goxel_gesture3d(&(gesture3d_t) {
         .type = GESTURE_HOVER,
-        .buttons_mask = GESTURE3D_FLAG_CTRL,
+        .buttons_mask = move_content ? 0 : GESTURE3D_FLAG_CTRL,
         .snap_mask = SNAP_SHAPE_SEGMENT,
         .snap_shape = MAT4_COPY(shape),
         .callback = on_gizmo_hover,
@@ -229,7 +247,7 @@ static void gizmo(const float box[4][4], int face)
 
     goxel_gesture3d(&(gesture3d_t) {
         .type = GESTURE_DRAG,
-        .buttons_mask = GESTURE3D_FLAG_CTRL,
+        .buttons_mask = move_content ? 0 : GESTURE3D_FLAG_CTRL,
         .snap_mask = SNAP_SHAPE_SEGMENT,
         .snap_shape = MAT4_COPY(shape),
         .callback = on_gizmo_drag,
