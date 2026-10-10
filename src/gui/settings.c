@@ -40,6 +40,13 @@ static int shortcut_callback(action_t *action, void *user)
     return 0;
 }
 
+// Apply and save the keymaps after an edit.
+static void on_keymaps_changed(void)
+{
+    goxel_update_keymaps();
+    settings_save();
+}
+
 static void on_keymap(int idx, keymap_t *keymap)
 {
     int i;
@@ -72,8 +79,8 @@ static void on_keymap(int idx, keymap_t *keymap)
         for (i = 0; i < ARRAY_SIZE(action_choices); i++) {
             selected = i == keymap->action;
             if (gui_combo_item(action_choices[i], selected)) {
-                keymap->action = input_choices[i].input;
-                settings_save();
+                keymap->action = i;
+                on_keymaps_changed();
             }
         }
         gui_combo_end();
@@ -92,7 +99,7 @@ static void on_keymap(int idx, keymap_t *keymap)
             selected = input_choices[i].input == keymap->input;
             if (gui_combo_item(input_choices[i].label, selected)) {
                 keymap->input = input_choices[i].input;
-                settings_save();
+                on_keymaps_changed();
             }
         }
         gui_combo_end();
@@ -102,6 +109,7 @@ static void on_keymap(int idx, keymap_t *keymap)
 
     if (gui_button(_("Delete"), 0, 0)) {
         arrdel(goxel.keymaps, idx);
+        on_keymaps_changed();
     }
 
     gui_next_column();
@@ -113,7 +121,7 @@ static void on_add_keymap_button(void)
 {
     keymap_t keymap = { 0, GESTURE_RMB };
     arrput(goxel.keymaps, keymap);
-    settings_save();
+    on_keymaps_changed();
 }
 
 int gui_settings_popup(void *data)
