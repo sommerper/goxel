@@ -55,8 +55,7 @@ if os.environ.get('CC') == 'clang':
 # Asan & Ubsan (need to come first).
 if env['mode'] == 'debug' and target_os == 'posix':
     env.Append(CCFLAGS=['-fsanitize=address', '-fsanitize=undefined'],
-               LINKFLAGS=['-fsanitize=address', '-fsanitize=undefined'],
-               LIBS=['asan', 'ubsan'])
+               LINKFLAGS=['-fsanitize=address', '-fsanitize=undefined'])
 
 
 # Global compilation flags.
