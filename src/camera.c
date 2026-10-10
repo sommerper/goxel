@@ -134,6 +134,12 @@ void camera_set_target(camera_t *cam, const float pos[3])
     float world_to_mat[4][4], p[3];
     mat4_invert(cam->mat, world_to_mat);
     mat4_mul_vec3(world_to_mat, pos, p);
+    // In ortho, dist is also the view size: slide the camera along its
+    // view axis instead (doesn't change the image) to keep the zoom.
+    if (cam->ortho) {
+        mat4_itranslate(cam->mat, 0, 0, p[2] + cam->dist);
+        return;
+    }
     cam->dist = -p[2];
 }
 
