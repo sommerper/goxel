@@ -514,6 +514,9 @@ int main(int argc, char **argv)
         }
         goto end;
     }
+    // Reopen the last project (recent files only lists existing ones).
+    if (!args.input && goxel.recent_files)
+        load_from_file(goxel.recent_files[0], true);
     start_main_loop(loop_function, window);
     settings_save(); // Remember the detached panels.
 end:

@@ -675,6 +675,8 @@ int load_from_file(const char *path, bool replace)
     if (replace) {
         goxel.image->path = strdup(path);
         goxel.image->saved_key = image_get_key(goxel.image);
+        // Use our copy: path can be an entry of the recent files list.
+        goxel_add_recent_file(goxel.image->path);
     }
     fclose(in);
 
@@ -735,7 +737,6 @@ static void a_open(void)
     image_delete(goxel.image);
     goxel.image = image_new();
     load_from_file(path, true);
-    goxel_add_recent_file(path);
 }
 
 ACTION_REGISTER(ACTION_open,
