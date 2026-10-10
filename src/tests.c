@@ -129,8 +129,28 @@ static void test_load_corrupt(void)
     sys_delete_file("/tmp/goxel_test.gox");
 }
 
+static void test_save_active_layer(void)
+{
+    layer_t *first;
+    int err;
+    if (DEFINED(WIN32)) return; // Don't test on Windows for the moment!
+    first = goxel.image->active_layer;
+    image_add_layer(goxel.image, NULL);
+    goxel.image->active_layer = first;
+    save_to_file(goxel.image, "/tmp/goxel_test.gox");
+    image_delete(goxel.image);
+    goxel.image = image_new();
+    err = goxel_import_file("/tmp/goxel_test.gox", NULL);
+    TEST(err == 0);
+    TEST(goxel.image->active_layer == goxel.image->layers->next);
+    image_delete(goxel.image);
+    goxel.image = image_new();
+    sys_delete_file("/tmp/goxel_test.gox");
+}
+
 void tests_run(void)
 {
+    test_save_active_layer();
     test_load_file_v2();
     test_load_file_v1_with_preview();
     test_load_corrupt();

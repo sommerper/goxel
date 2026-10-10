@@ -382,6 +382,8 @@ void save_to_file(const image_t *img, const char *path)
         }
         chunk_write_dict_value(&c, out, "visible", &layer->visible,
                                sizeof(layer->visible));
+        if (layer == img->active_layer)
+            chunk_write_dict_value(&c, out, "active", NULL, 0);
 
         chunk_write_finish(&c, out);
     }
@@ -499,7 +501,7 @@ static block_hash_t *hash_find_at(block_hash_t *hash, int index)
 
 int load_from_file(const char *path, bool replace)
 {
-    layer_t *layer, *layer_tmp;
+    layer_t *layer, *layer_tmp, *active_layer = NULL;
     block_hash_t *blocks_table = NULL, *data, *data_tmp;
     FILE *in;
     char magic[4] = {};
@@ -614,6 +616,8 @@ int load_from_file(const char *path, bool replace)
                 }
                 DICT_CPY("color", layer->color);
                 DICT_CPY("visible", layer->visible);
+                if (strcmp(dict_key, "active") == 0)
+                    active_layer = layer;
                 if (DICT_CPY("material", material_idx))
                     layer->material = get_material(goxel.image, material_idx);
             }
@@ -663,6 +667,7 @@ int load_from_file(const char *path, bool replace)
         }
         chunk_read_finish(&c, in);
     }
+    if (active_layer) goxel.image->active_layer = active_layer;
 
     // Free the block hash table.  We do not delete the block data because
     // they have been used by the volumes.
