@@ -79,8 +79,14 @@ static char *read_file(const char *path, int *size)
 uint8_t *img_read_from_mem(const char *data, int size,
                            int *w, int *h, int *bpp)
 {
+    int file_bpp;
+    uint8_t *img;
+
     assert(*bpp >= 0 && *bpp <= 4);
-    return stbi_load_from_memory((uint8_t*)data, size, w, h, bpp, *bpp);
+    // stbi returns the file's channel count, not the one we asked for.
+    img = stbi_load_from_memory((uint8_t*)data, size, w, h, &file_bpp, *bpp);
+    if (!*bpp) *bpp = file_bpp;
+    return img;
 }
 
 uint8_t *img_read(const char *path, int *width, int *height, int *bpp)

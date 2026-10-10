@@ -35,6 +35,9 @@ uint8_t *img_read(const char *path, int *width, int *height, int *bpp);
 /*
  * Function: img_read_from_mem
  * Read an image from memory.
+ *
+ * If *bpp is 0, it is set to the image's channel count; otherwise the
+ * image is converted to *bpp channels.
  */
 uint8_t *img_read_from_mem(const char *data, int size,
                            int *w, int *h, int *bpp);
