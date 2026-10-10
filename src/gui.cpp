@@ -493,7 +493,7 @@ static void gui_init(void)
 
 void gui_release(void)
 {
-    if (gui) ImGui::DestroyContext();
+    if (gui && gui->initialized) ImGui::DestroyContext();
 }
 
 void gui_release_graphics(void)
