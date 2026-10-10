@@ -218,6 +218,7 @@ int gesture3d(const gesture3d_t *gest, int *nb, gesture3d_t gestures[])
     if (match->state < GESTURE3D_STATE_BEGIN) {
         match->type = gest->type;
         match->buttons = gest->buttons;
+        match->buttons_mask = gest->buttons_mask;
         match->snap_mask = gest->snap_mask;
         match->snap_offset = gest->snap_offset;
         mat4_copy(gest->snap_shape, match->snap_shape);
