@@ -95,7 +95,7 @@ static int iter(tool_t *tool, const painter_t *painter,
 
     if (goxel.snap_mask & (SNAP_SELECTION_IN | SNAP_SELECTION_OUT)) {
         render_box(&goxel.rend, goxel.image->selection_box, NULL,
-                   EFFECT_STRIP | EFFECT_WIREFRAME);
+                   EFFECT_STRIP | EFFECT_WIREFRAME | EFFECT_NO_DEPTH_TEST);
     }
 
     snap_offset = (painter->mode == MODE_OVER) ? 0.5 : -0.5;

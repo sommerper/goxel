@@ -1172,7 +1172,7 @@ void goxel_render_view(const float viewport[4], bool render_mode)
 
     if (goxel.tool->flags & TOOL_SHOW_SELECTION_BOX) {
         render_box(rend, goxel.image->selection_box, NULL,
-                   EFFECT_STRIP | EFFECT_WIREFRAME);
+                   EFFECT_STRIP | EFFECT_WIREFRAME | EFFECT_NO_DEPTH_TEST);
     }
 
     if (goxel.tool->flags & TOOL_SHOW_MASK) {

@@ -291,7 +291,8 @@ int box_edit(const float box[4][4], int flags, float transf[4][4])
         .user = &g_data,
     });
 
-    render_box(&goxel.rend, box, NULL, EFFECT_STRIP | EFFECT_WIREFRAME);
+    render_box(&goxel.rend, box, NULL,
+               EFFECT_STRIP | EFFECT_WIREFRAME | EFFECT_NO_DEPTH_TEST);
     if (transf) mat4_copy(g_data.transf, transf);
 
     // Avoid sending an update event if we didn't actually move.
