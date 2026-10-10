@@ -313,4 +313,5 @@ TOOL_REGISTER(TOOL_SELECTION,
               .iter_fn          = iter,
               .gui_fn           = gui,
               .default_shortcut = "Shift R",
-              .flags            = TOOL_SHOW_MASK | TOOL_SHOW_SELECTION_BOX, )
+              .flags            = TOOL_SHOW_MASK | TOOL_SHOW_SELECTION_BOX |
+                                  TOOL_REQUIRE_VISIBLE, )

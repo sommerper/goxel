@@ -82,6 +82,11 @@ int tool_iter(tool_t *tool, const painter_t *painter, const float viewport[4])
         goxel_add_hint(0, NULL, _("Cannot edit this layer"));
         return 0;
     }
+    if (    (tool->flags & TOOL_REQUIRE_VISIBLE) &&
+            !goxel.image->active_layer->visible) {
+        goxel_add_hint(0, NULL, _("Cannot select on a hidden layer"));
+        return 0;
+    }
     tool->state = tool->iter_fn(tool, painter, viewport);
 
     if (tool->flags & TOOL_ALLOW_PICK_COLOR) {
@@ -108,8 +113,16 @@ int tool_iter(tool_t *tool, const painter_t *painter, const float viewport[4])
 
 int tool_gui(tool_t *tool)
 {
+    int ret;
+    bool enabled;
+
     if (!tool->gui_fn) return 0;
-    return tool->gui_fn(tool);
+    enabled = !(tool->flags & TOOL_REQUIRE_VISIBLE) ||
+              goxel.image->active_layer->visible;
+    gui_enabled_begin(enabled);
+    ret = tool->gui_fn(tool);
+    gui_enabled_end();
+    return ret;
 }
 
 static bool mask_mode_button(const char *label, int *value, int s)

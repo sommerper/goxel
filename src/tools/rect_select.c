@@ -146,5 +146,6 @@ TOOL_REGISTER(TOOL_RECT_SELECT, rect_select, tool_rect_select_t,
               .init_fn = init,
               .iter_fn = iter,
               .gui_fn = gui,
-              .flags = TOOL_REQUIRE_CAN_EDIT | TOOL_SHOW_MASK,
+              .flags = TOOL_REQUIRE_CAN_EDIT | TOOL_SHOW_MASK |
+                       TOOL_REQUIRE_VISIBLE,
 )

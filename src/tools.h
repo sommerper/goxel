@@ -47,6 +47,7 @@ enum {
     TOOL_ALLOW_PICK_COLOR   = 1 << 2, // Ctrl switches to pick color tool.
     TOOL_SHOW_MASK          = 1 << 3,
     TOOL_SHOW_SELECTION_BOX = 1 << 4,
+    TOOL_REQUIRE_VISIBLE    = 1 << 5, // Set to tools that select voxels.
 };
 
 // Tools
