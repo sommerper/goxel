@@ -904,6 +904,7 @@ void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
     int i;
     bool ctrl;
     bool shift;
+    static tool_t *tool_before_pick = NULL;
 
     painter_t painter = goxel.painter;
     gesture_update(arrlen(goxel.gestures), goxel.gestures, inputs, viewport,
@@ -938,6 +939,18 @@ void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
     // Only apply smoothness for paint mode, that is we don't support
     // semi 'transparent' voxels anymore.
     if (painter.mode != MODE_PAINT) painter.smoothness = 0;
+
+    // Hold D to switch to the color picker until D is released.
+    if (inputs->keys['D'] && !tool_before_pick &&
+            goxel.tool->id != TOOL_PICK_COLOR) {
+        tool_before_pick = goxel.tool;
+        action_exec2(ACTION_tool_set_pick_color);
+    }
+    if (!inputs->keys['D'] && tool_before_pick) {
+        if (goxel.tool->id == TOOL_PICK_COLOR)
+            action_exec2(tool_before_pick->action_idx);
+        tool_before_pick = NULL;
+    }
 
     if (!goxel.pathtrace) {
         tool_iter(goxel.tool, &painter, viewport);

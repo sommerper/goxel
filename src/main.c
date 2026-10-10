@@ -223,6 +223,20 @@ static void parse_options(int argc, char **argv, args_t *args)
 }
 
 
+// Crosshair over the view while the color picker is active.
+static void update_cursor(GLFWwindow *window)
+{
+    static GLFWcursor *crosshair = NULL;
+    static bool picking = false;
+    bool p = goxel.tool->id == TOOL_PICK_COLOR && !gui_want_capture_mouse();
+
+    if (p == picking) return;
+    picking = p;
+    if (!crosshair)
+        crosshair = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    glfwSetCursor(window, picking ? crosshair : NULL);
+}
+
 static void loop_function(void *arg)
 {
     int fb_size[2], win_size[2];
@@ -264,6 +278,7 @@ static void loop_function(void *arg)
         glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
 
     goxel_iter(g_inputs);
+    update_cursor(window);
     goxel_render(g_inputs);
 
     memset(g_inputs, 0, sizeof(*g_inputs));
