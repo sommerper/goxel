@@ -1608,7 +1608,9 @@ static void a_reset_selection(void)
 }
 
 ACTION_REGISTER(ACTION_reset_selection,
+    .help = N_("Deselect"),
     .cfunc = a_reset_selection,
+    .default_shortcut = "Ctrl D",
 )
 
 static void a_fill_selection_box(void)
