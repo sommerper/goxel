@@ -472,27 +472,30 @@ void goxel_init(void)
     goxel_add_gesture(GESTURE_DRAG, GESTURE_LMB, on_drag);
 }
 
+// The first matching keymap wins, so modifier combos go before plain MMB.
+static const keymap_t DEFAULT_KEYMAPS[] = {
+    {1, GESTURE_RMB},
+    {1, GESTURE_MMB | GESTURE_SHIFT},
+    {2, GESTURE_MMB | GESTURE_CTRL},
+    {0, GESTURE_MMB},
+};
+
+bool goxel_keymaps_are_default(void)
+{
+    return arrlen(goxel.keymaps) == ARRAY_SIZE(DEFAULT_KEYMAPS) &&
+           memcmp(goxel.keymaps, DEFAULT_KEYMAPS,
+                  sizeof(DEFAULT_KEYMAPS)) == 0;
+}
+
 void goxel_update_keymaps(void)
 {
     int i, action, input;
     typedef int (*fn_t)(const gesture_t *gest, void *user);
     const fn_t FNS[] = { on_pan, on_rotate, on_zoom };
-    keymap_t keymap;
 
-    // Default keymaps.
     if (arrlen(goxel.keymaps) == 0) {
-        keymap.action = 1;
-        keymap.input = GESTURE_RMB;
-        arrput(goxel.keymaps, keymap);
-        keymap.action = 0;
-        keymap.input = GESTURE_MMB | GESTURE_SHIFT;
-        arrput(goxel.keymaps, keymap);
-        keymap.action = 2;
-        keymap.input = GESTURE_MMB | GESTURE_CTRL;
-        arrput(goxel.keymaps, keymap);
-        keymap.action = 0;
-        keymap.input = GESTURE_MMB;
-        arrput(goxel.keymaps, keymap);
+        for (i = 0; i < ARRAY_SIZE(DEFAULT_KEYMAPS); i++)
+            arrput(goxel.keymaps, DEFAULT_KEYMAPS[i]);
     }
 
     goxel_remove_gesture(on_pan);

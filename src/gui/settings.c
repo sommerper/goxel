@@ -300,6 +300,8 @@ static void save_keymaps(FILE *file)
 {
     int i, action, input;
 
+    // Unchanged defaults aren't saved, so that new defaults still apply.
+    if (goxel_keymaps_are_default()) return;
     fprintf(file, "[keymaps]\n");
     for (i = 0; i < arrlen(goxel.keymaps); i++) {
         action = goxel.keymaps[i].action;

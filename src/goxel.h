@@ -691,6 +691,7 @@ bool goxel_gesture3d(const gesture3d_t *gesture);
  * Call this if the keymaps array has changed.
  */
 void goxel_update_keymaps(void);
+bool goxel_keymaps_are_default(void);
 
 // Section: tests
 
