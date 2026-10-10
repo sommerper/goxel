@@ -31,7 +31,7 @@ typedef struct {
     // Ctrl + gizmo arrow drag: move the selected voxels with the box.
     volume_t *start_volume;  // Layer volume without the selected voxels.
     volume_t *start_content; // The selected voxels.
-    float   start_pos[3];
+    float   start_box[4][4];
 
 } tool_selection_t;
 
@@ -88,12 +88,15 @@ static void preview_mask(bool on)
 }
 
 // Same as the move tool: put the selected voxels back at the box offset.
-static void move_content(tool_selection_t *tool, int state)
+// To stretch, the box only grew one face: repeat the voxels into it.
+static void move_content(tool_selection_t *tool, int state, bool stretch)
 {
     image_t *img = goxel.image;
     volume_t *volume = img->active_layer->volume;
     volume_t *tmp;
     float transf[4][4] = MAT4_IDENTITY;
+    float a[3], b[3];
+    int dir[3] = {0}, n = 0, i;
 
     if (!tool->start_volume) {
         tool->start_volume = volume_copy(volume);
@@ -103,15 +106,30 @@ static void move_content(tool_selection_t *tool, int state)
                      MODE_INTERSECT, NULL);
     }
 
-    vec3_sub(img->selection_box[3], tool->start_pos, transf[3]);
+    vec3_sub(img->selection_box[3], tool->start_box[3], transf[3]);
+    // Stretch along the axis that grew, toward the side the box moved.
+    // Rounded, since the box picks up float errors while dragging.
+    box_get_size(tool->start_box, a);
+    box_get_size(img->selection_box, b);
+    for (i = 0; stretch && i < 3; i++) {
+        if (round(2 * (b[i] - a[i])) <= 0) continue;
+        n = round(2 * (b[i] - a[i]));
+        dir[i] = transf[3][i] > 0 ? 1 : -1;
+    }
     tmp = volume_copy(tool->start_content);
-    volume_move(tmp, transf);
+    if (stretch)
+        volume_stretch(tmp, dir, n);
+    else
+        volume_move(tmp, transf);
     volume_set(volume, tool->start_volume);
     volume_merge(volume, tmp, MODE_OVER, NULL);
     volume_delete(tmp);
 
     if (state == GESTURE3D_STATE_END) {
-        volume_move(img->selection_mask, transf);
+        if (stretch)
+            volume_stretch(img->selection_mask, dir, n);
+        else
+            volume_move(img->selection_mask, transf);
         volume_delete(tool->start_volume);
         volume_delete(tool->start_content);
         tool->start_volume = NULL;
@@ -220,18 +238,21 @@ static int iter(tool_t *tool, const painter_t *painter,
             GIZMO_TRANSLATION | GIZMO_GROW | GIZMO_MOVE_CONTENT, transf);
     if (box_edit_state) {
         if (box_edit_state == GESTURE3D_STATE_BEGIN)
-            vec3_copy(img->selection_box[3], selection->start_pos);
+            mat4_copy(img->selection_box, selection->start_box);
         mat4_mul(transf, img->selection_box, img->selection_box);
-        // Only the arrows accept Ctrl, so this is a Ctrl + arrow drag.  Ctrl
-        // may come down mid-drag (a home-row mod only sends it after its
-        // hold timeout): the content then jumps to follow the box.
+        // Only the arrows accept Ctrl, so this is a Ctrl + arrow drag, with
+        // Shift a stretch.  Ctrl or Shift may come down mid-drag (a home-row
+        // mod only sends it after its hold timeout): the content then jumps
+        // to follow the box.
         if (    selection->start_volume || (
                 box_edit_state != GESTURE3D_STATE_END &&
                 img->selection_mask &&
                 image_layer_can_edit(img, img->active_layer) &&
                 (gui_is_key_down(KEY_LEFT_CONTROL) ||
                  gui_is_key_down(KEY_RIGHT_CONTROL)))) {
-            move_content(selection, box_edit_state);
+            move_content(selection, box_edit_state,
+                         gui_is_key_down(KEY_LEFT_SHIFT) ||
+                         gui_is_key_down(KEY_RIGHT_SHIFT));
         } else {
             preview_mask(box_edit_state != GESTURE3D_STATE_END);
             if (box_edit_state == GESTURE3D_STATE_END)

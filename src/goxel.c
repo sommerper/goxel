@@ -894,6 +894,47 @@ static void update_keymaps_hints(void)
     }
 }
 
+// Ctrl + Shift + arrow: stretch the selected voxels by one toward the world
+// axis closest to the arrow on screen, and grow the selection with them.
+static void stretch_selection(const float screen_dir[3], int sign)
+{
+    image_t *img = goxel.image;
+    layer_t *layer = img->active_layer;
+    float box[4][4];
+    int i, axis = 0, dir[3] = {0};
+    volume_t *content;
+    painter_t painter;
+
+    if (box_is_null(img->selection_box)) return;
+    if (!image_layer_can_edit(img, layer)) return;
+
+    for (i = 1; i < 3; i++)
+        if (fabs(screen_dir[i]) > fabs(screen_dir[axis])) axis = i;
+    dir[axis] = screen_dir[axis] * sign > 0 ? 1 : -1;
+
+    content = volume_copy(layer->volume);
+    if (!volume_is_empty(img->selection_mask)) {
+        volume_merge(content, img->selection_mask, MODE_INTERSECT, NULL);
+    } else {
+        painter = (painter_t) {
+            .shape = &shape_cube,
+            .mode = MODE_INTERSECT,
+            .color = {255, 255, 255, 255},
+        };
+        volume_op(content, &painter, img->selection_box);
+    }
+    volume_stretch(content, dir, 1);
+    volume_merge(layer->volume, content, MODE_OVER, NULL);
+    volume_delete(content);
+
+    if (!volume_is_empty(img->selection_mask))
+        volume_stretch(img->selection_mask, dir, 1);
+    mat4_copy(img->selection_box, box);
+    vec3_iadd(box[3], VEC(dir[0], dir[1], dir[2]));
+    box_union(img->selection_box, box, img->selection_box);
+    image_history_push(img);
+}
+
 // XXX: Cleanup this.
 void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
                          bool capture_keys)
@@ -970,17 +1011,16 @@ void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
     // handle keyboard rotations
     if (!capture_keys) return;
 
-    if (inputs->keys[KEY_LEFT]) {
-        camera_turntable(camera, +0.05, 0);
-    }
-    if (inputs->keys[KEY_RIGHT]) {
-        camera_turntable(camera, -0.05, 0);
-    }
-    if (inputs->keys[KEY_UP]) {
-        camera_turntable(camera, 0, +0.05);
-    }
-    if (inputs->keys[KEY_DOWN]) {
-        camera_turntable(camera, 0, -0.05);
+    if (ctrl && shift) {
+        if (gui_is_key_pressed(KEY_LEFT)) stretch_selection(camera->mat[0], -1);
+        if (gui_is_key_pressed(KEY_RIGHT)) stretch_selection(camera->mat[0], 1);
+        if (gui_is_key_pressed(KEY_UP)) stretch_selection(camera->mat[1], 1);
+        if (gui_is_key_pressed(KEY_DOWN)) stretch_selection(camera->mat[1], -1);
+    } else {
+        if (inputs->keys[KEY_LEFT]) camera_turntable(camera, +0.05, 0);
+        if (inputs->keys[KEY_RIGHT]) camera_turntable(camera, -0.05, 0);
+        if (inputs->keys[KEY_UP]) camera_turntable(camera, 0, +0.05);
+        if (inputs->keys[KEY_DOWN]) camera_turntable(camera, 0, -0.05);
     }
 
     // C: recenter the view:

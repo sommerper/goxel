@@ -149,8 +149,10 @@ static int on_gizmo_hover(gesture3d_t *gest)
     goxel_add_hint(HINT_LARGE, GLYPH_MOUSE_LMB, _("Drag to move"));
     if (g_data.flags & GIZMO_GROW)
         goxel_add_hint(0, "Shift+" GLYPH_MOUSE_LMB, _("Resize"));
-    if (g_data.flags & GIZMO_MOVE_CONTENT)
+    if (g_data.flags & GIZMO_MOVE_CONTENT) {
         goxel_add_hint(0, "Ctrl+" GLYPH_MOUSE_LMB, _("Move content"));
+        goxel_add_hint(0, "Ctrl+Shift+" GLYPH_MOUSE_LMB, _("Stretch content"));
+    }
     g_data.snap_face = gest->user_key;
     g_data.flags |= FLAG_SNAP_GIZMO;
     return 0;
@@ -178,9 +180,9 @@ static int on_gizmo_drag(gesture3d_t *gest)
     v[2] = round(v[2]);
     mat4_copy(g_data.start_box, box);
     // Shift: only move the arrow's face, growing the box in its direction.
+    // With Ctrl too, the caller stretches the content into the new space.
     if ((g_data.flags & GIZMO_GROW) &&
-            (gest->flags & GESTURE3D_FLAG_SHIFT) &&
-            !(gest->flags & GESTURE3D_FLAG_CTRL)) {
+            (gest->flags & GESTURE3D_FLAG_SHIFT)) {
         mat4_mul(g_data.start_box, FACES_MATS[face], face_plane);
         vec3_add(face_plane[3], v, face_plane[3]);
         box_move_face(g_data.start_box, face, face_plane[3], box);

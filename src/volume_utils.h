@@ -156,6 +156,17 @@ void volume_blit(volume_t *volume, const uint8_t *data,
 
 void volume_move(volume_t *volume, const float mat[4][4]);
 
+/*
+ * Function: volume_stretch
+ * Grow a volume n voxels along an axis, repeating its last voxels.
+ *
+ * Parameters:
+ *   volume - The volume to stretch.
+ *   dir    - Unit axis direction, for example {0, 0, -1}.
+ *   n      - Number of voxels to add.
+ */
+void volume_stretch(volume_t *volume, const int dir[3], int n);
+
 void volume_shift_alpha(volume_t *volume, int v);
 
 // Compute the selection mask for a given condition.

@@ -167,17 +167,36 @@ static void volume_move_get_color(const int pos[3], uint8_t c[4], void *user)
 void volume_move(volume_t *volume, const float mat[4][4])
 {
     float box[4][4];
-    volume_t *src_volume = volume_copy(volume);
+    volume_t *src_volume;
     float imat[4][4];
 
     mat4_invert(mat, imat);
     volume_get_box(volume, true, box);
     if (box_is_null(box)) return;
+    src_volume = volume_copy(volume);
     mat4_mul(mat, box, box);
     volume_fill(volume, box, volume_move_get_color,
                 USER_PASS(src_volume, &imat));
     volume_delete(src_volume);
     volume_remove_empty_tiles(volume, false);
+}
+
+void volume_stretch(volume_t *volume, const int dir[3], int n)
+{
+    float transf[4][4] = MAT4_IDENTITY;
+    volume_t *tmp;
+    int i;
+
+    vec3_set(transf[3], dir[0], dir[1], dir[2]);
+    // ponytail: one volume move per voxel, fill the rows directly if long
+    // stretches of big selections get slow.
+    for (i = 0; i < n; i++) {
+        tmp = volume_copy(volume);
+        volume_move(tmp, transf);
+        volume_merge(tmp, volume, MODE_OVER, NULL);
+        volume_set(volume, tmp);
+        volume_delete(tmp);
+    }
 }
 
 void volume_blit(volume_t *volume, const uint8_t *data,
