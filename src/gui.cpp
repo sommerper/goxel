@@ -539,6 +539,8 @@ static int check_action_shortcut(action_t *action, void *user)
 
     if (str_startswith(s, "Ctrl")) return 0;
     if (str_startswith(s, "Shift")) return 0;
+    // Only single keys: "Delete" would otherwise trigger on 'D'.
+    if (!s[0] || s[1]) return 0;
 
     if (    (check_char && isCharPressed(s[0])) ||
             (check_key && ImGui::IsKeyPressed((ImGuiKey)s[0], false))) {
