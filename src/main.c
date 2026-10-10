@@ -317,7 +317,7 @@ static bool open_dialog(
     char nfd_filters_spec[128];
     char *out_path = NULL;
     nfdu8filteritem_t filter;
-    nfdwindowhandle_t nfd_window;
+    nfdwindowhandle_t nfd_window = {0};
     nfdresult_t err;
     GLFWwindow *window = user;
 
