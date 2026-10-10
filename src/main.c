@@ -41,12 +41,33 @@ static bool         g_keys_down[GLFW_KEY_LAST + 1];
 
 // Read by LeakSanitizer in debug builds.  GTK (used by the file dialogs)
 // keeps fontconfig's font cache and some GObjects alive until exit, and
-// can't be deinitialized.
+// can't be deinitialized.  Mesa's GLX driver and NVIDIA's driver leak after
+// their context is destroyed, and GLFW never destroys some Wayland objects
+// of the window.
 const char *__lsan_default_suppressions(void)
 {
     return "leak:libfontconfig.so\n"
-           "leak:libglib-2.0.so\n";
+           "leak:libglib-2.0.so\n"
+           "leak:libGLX_mesa.so\n"
+           "leak:libgallium\n"
+           "leak:libnvidia-\n"
+           "leak:_glfwCreateWindowWayland\n";
 }
+
+#ifdef __linux__
+#include <dlfcn.h>
+#include <link.h>
+
+// glfwTerminate unloads the GL driver, and LeakSanitizer then reports all
+// the driver's allocations as leaks, since the globals pointing to them are
+// gone.  Keeping every loaded library mapped until exit avoids that.
+static int pin_library(struct dl_phdr_info *info, size_t size, void *data)
+{
+    if (*info->dlpi_name)
+        dlopen(info->dlpi_name, RTLD_LAZY | RTLD_NOLOAD | RTLD_NODELETE);
+    return 0;
+}
+#endif
 
 static void on_glfw_error(int code, const char *msg)
 {
@@ -294,7 +315,6 @@ static void start_main_loop(void (*func)(void *arg), GLFWwindow *window)
         func(window);
         if (goxel.quit) break;
     }
-    glfwTerminate();
 }
 #else
 static void start_main_loop(void (*func)(void *arg), GLFWwindow *window)
@@ -520,6 +540,9 @@ int main(int argc, char **argv)
     start_main_loop(loop_function, window);
     settings_save(); // Remember the detached panels.
 end:
+#ifdef __linux__
+    if (DEBUG) dl_iterate_phdr(pin_library, NULL);
+#endif
     glfwTerminate();
     goxel_release();
     return ret;
