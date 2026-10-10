@@ -77,6 +77,8 @@ static int on_hover(gesture3d_t *gest)
 
 static int on_click(gesture3d_t *gest)
 {
+    // A short Shift/Ctrl drag ends up as a click: keep the selection.
+    if (gest->flags & (GESTURE3D_FLAG_SHIFT | GESTURE3D_FLAG_CTRL)) return 0;
     action_exec2(ACTION_reset_selection);
     return 0;
 }
