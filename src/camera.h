@@ -98,6 +98,14 @@ void camera_update(camera_t *camera);
 void camera_set_target(camera_t *camera, const float pos[3]);
 
 /*
+ * Function: camera_zoom
+ * Scale the view by k (k < 1 zooms in), keeping the point at the window
+ * position win fixed on screen.
+ */
+void camera_zoom(camera_t *camera, float k, const float win[2],
+                 const float viewport[4]);
+
+/*
  * Function: camera_get_ray
  * Get the raytracing ray of the camera at a given screen position.
  *

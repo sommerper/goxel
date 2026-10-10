@@ -143,6 +143,22 @@ void camera_set_target(camera_t *cam, const float pos[3])
     cam->dist = -p[2];
 }
 
+void camera_zoom(camera_t *cam, float k, const float win[2],
+                 const float viewport[4])
+{
+    float o[3], d[3], p[3];
+    // Point under win at the rotation distance, in camera space.
+    camera_get_ray(cam, win, viewport, o, d);
+    mat4_mul_vec3(cam->view_mat, o, o);
+    mat4_mul_dir3(cam->view_mat, d, d);
+    vec3_addk(o, d, (-cam->dist - o[2]) / d[2], p);
+    // Moving toward it by (1 - k) keeps it at the same screen position,
+    // in both perspective and ortho (where dist is the view size).
+    vec3_mul(p, 1 - k, p);
+    mat4_itranslate(cam->mat, p[0], p[1], p[2]);
+    cam->dist *= k;
+}
+
 /*
  * Function: camera_fit_box
  * Move a camera so that a given box is entirely visible.

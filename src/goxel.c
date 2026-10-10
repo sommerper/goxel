@@ -832,11 +832,10 @@ static int on_zoom(const gesture_t *gest, void *user)
 
     if (gui_want_capture_mouse()) return 0;
     zoom = (gest->pos[1] - gest->last_pos[1]) / 10.0;
-    mat4_itranslate(camera->mat, 0, 0,
-            -camera->dist * (1 - pow(1.1, -zoom)));
-    camera->dist *= pow(1.1, -zoom);
+    // Zoom toward where the drag started.
+    camera_zoom(camera, pow(1.1, -zoom), gest->start_pos[0], gest->viewport);
     // Auto adjust the camera rotation position.
-    if (goxel_unproject_on_volume(gest->viewport, gest->pos,
+    if (goxel_unproject_on_volume(gest->viewport, gest->start_pos[0],
                                 goxel_get_layers_volume(goxel.image), p, n)) {
         camera_set_target(camera, p);
     }
@@ -942,9 +941,8 @@ void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
     }
 
     if (inputs->mouse_wheel && !gui_want_capture_mouse()) {
-        mat4_itranslate(camera->mat, 0, 0,
-                -camera->dist * (1 - pow(1.1, -inputs->mouse_wheel)));
-        camera->dist *= pow(1.1, -inputs->mouse_wheel);
+        camera_zoom(camera, pow(1.1, -inputs->mouse_wheel),
+                    inputs->touches[0].pos, viewport);
         // Auto adjust the camera rotation position.
         if (goxel_unproject_on_volume(viewport, inputs->touches[0].pos,
                                 goxel_get_layers_volume(goxel.image), p, n)) {
