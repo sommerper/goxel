@@ -31,6 +31,14 @@
 static inputs_t     *g_inputs = NULL;
 static float        g_scale = 1;
 
+// Key presses and releases in the order GLFW sent them.  Polling glfwGetKey
+// once per frame misses a key that goes down and up within one frame, which
+// is what keyboard firmware does when it flushes a hold-tap key.
+typedef struct { int key; bool down; } key_event_t;
+static key_event_t  g_key_events[256];
+static int          g_key_events_nb = 0;
+static bool         g_keys_down[GLFW_KEY_LAST + 1];
+
 static void on_glfw_error(int code, const char *msg)
 {
     fprintf(stderr, "glfw error %d (%s)\n", code, msg);
@@ -39,6 +47,39 @@ static void on_glfw_error(int code, const char *msg)
 void on_scroll(GLFWwindow *win, double x, double y)
 {
     g_inputs->mouse_wheel = y;
+}
+
+void on_key(GLFWwindow *win, int key, int scancode, int action, int mods)
+{
+    // Skip repeats: imgui does its own key repeat.
+    if (key < 0 || action == GLFW_REPEAT) return;
+    // ponytail: drops events past 256 per frame, a keyboard can't send that.
+    if (g_key_events_nb == ARRAY_SIZE(g_key_events)) return;
+    g_key_events[g_key_events_nb++] = (key_event_t){key, action == GLFW_PRESS};
+}
+
+// Feed the key events in order.  A modifier release that follows a key press
+// waits for the next frame, so that a firmware chord, or a hold-tap flushed
+// together with the modifier release, still reads as Ctrl+key.  A key that
+// went down and up within the frame reads as down for this frame.
+static void update_keys(bool keys[])
+{
+    int i, n;
+    bool mod, pressed = false;
+    key_event_t e;
+
+    for (n = 0; n < g_key_events_nb; n++) {
+        e = g_key_events[n];
+        mod = e.key >= GLFW_KEY_LEFT_SHIFT && e.key <= GLFW_KEY_RIGHT_SUPER;
+        if (mod && !e.down && pressed) break;
+        if (e.down && !mod) pressed = keys[e.key] = true;
+        g_keys_down[e.key] = e.down;
+    }
+    g_key_events_nb -= n;
+    memmove(g_key_events, g_key_events + n,
+            g_key_events_nb * sizeof(g_key_events[0]));
+    for (i = 0; i <= GLFW_KEY_LAST; i++)
+        keys[i] |= g_keys_down[i];
 }
 
 void on_char(GLFWwindow *win, unsigned int c)
@@ -170,7 +211,6 @@ static void parse_options(int argc, char **argv, args_t *args)
 static void loop_function(void *arg)
 {
     int fb_size[2], win_size[2];
-    int i;
     double xpos, ypos;
     float scale;
     float scales[2];
@@ -195,9 +235,7 @@ static void loop_function(void *arg)
 
     GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
-    for (i = GLFW_KEY_SPACE; i <= GLFW_KEY_LAST; i++) {
-        g_inputs->keys[i] = glfwGetKey(window, i) == GLFW_PRESS;
-    }
+    update_keys(g_inputs->keys);
     glfwGetCursorPos(window, &xpos, &ypos);
     xpos *= (float)g_inputs->window_size[0] / win_size[0];
     ypos *= (float)g_inputs->window_size[1] / win_size[1];
@@ -413,6 +451,7 @@ int main(int argc, char **argv)
         glfwSetScrollCallback(window, on_scroll);
     glfwSwapInterval(1);
     glfwSetDropCallback(window, on_drop);
+    glfwSetKeyCallback(window, on_key);
     glfwSetCharCallback(window, on_char);
     glfwSetWindowCloseCallback(window, on_close);
     glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, false);
