@@ -39,6 +39,15 @@ static key_event_t  g_key_events[256];
 static int          g_key_events_nb = 0;
 static bool         g_keys_down[GLFW_KEY_LAST + 1];
 
+// Read by LeakSanitizer in debug builds.  GTK (used by the file dialogs)
+// keeps fontconfig's font cache and some GObjects alive until exit, and
+// can't be deinitialized.
+const char *__lsan_default_suppressions(void)
+{
+    return "leak:libfontconfig.so\n"
+           "leak:libglib-2.0.so\n";
+}
+
 static void on_glfw_error(int code, const char *msg)
 {
     fprintf(stderr, "glfw error %d (%s)\n", code, msg);
