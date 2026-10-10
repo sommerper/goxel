@@ -60,8 +60,8 @@ Usage
 -----
 
 - Left click: apply selected tool operation.
-- Middle click: rotate the view.
-- right click: pan the view.
+- Middle click: pan the view.
+- Right click: rotate the view.
 - Left/Right arrow: rotate the view.
 - Mouse wheel: zoom in and out.
 

@@ -481,7 +481,7 @@ void goxel_update_keymaps(void)
 
     // Default keymaps.
     if (arrlen(goxel.keymaps) == 0) {
-        keymap.action = 0;
+        keymap.action = 1;
         keymap.input = GESTURE_RMB;
         arrput(goxel.keymaps, keymap);
         keymap.action = 0;
@@ -490,7 +490,7 @@ void goxel_update_keymaps(void)
         keymap.action = 2;
         keymap.input = GESTURE_MMB | GESTURE_CTRL;
         arrput(goxel.keymaps, keymap);
-        keymap.action = 1;
+        keymap.action = 0;
         keymap.input = GESTURE_MMB;
         arrput(goxel.keymaps, keymap);
     }
