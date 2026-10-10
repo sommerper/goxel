@@ -67,6 +67,26 @@ static void update_mask(tool_selection_t *tool)
     image_history_push(goxel.image);
 }
 
+// Until the mask is updated, show the voxels in the box tinted 50% green.
+static void preview_mask(bool on)
+{
+    image_t *img = goxel.image;
+    const painter_t painter = {
+        .shape = &shape_cube,
+        .mode = MODE_PAINT,
+        .color = {0, 255, 0, 128},
+    };
+
+    if (!on || box_is_null(img->selection_box)) {
+        volume_delete(goxel.tool_volume);
+        goxel.tool_volume = NULL;
+        return;
+    }
+    if (!goxel.tool_volume) goxel.tool_volume = volume_new();
+    volume_set(goxel.tool_volume, img->active_layer->volume);
+    volume_op(goxel.tool_volume, &painter, img->selection_box);
+}
+
 // Same as the move tool: put the selected voxels back at the box offset.
 static void move_content(tool_selection_t *tool, int state)
 {
@@ -167,6 +187,7 @@ static int on_drag(gesture3d_t *gest)
                                  img->selection_box);
     }
 
+    preview_mask(gest->state != GESTURE3D_STATE_END);
     if (gest->state == GESTURE3D_STATE_END) {
         update_mask(tool);
     }
@@ -211,8 +232,10 @@ static int iter(tool_t *tool, const painter_t *painter,
                 (gui_is_key_down(KEY_LEFT_CONTROL) ||
                  gui_is_key_down(KEY_RIGHT_CONTROL)))) {
             move_content(selection, box_edit_state);
-        } else if (box_edit_state == GESTURE3D_STATE_END) {
-            update_mask(selection);
+        } else {
+            preview_mask(box_edit_state != GESTURE3D_STATE_END);
+            if (box_edit_state == GESTURE3D_STATE_END)
+                update_mask(selection);
         }
         return 0;
     }
