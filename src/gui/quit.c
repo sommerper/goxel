@@ -24,11 +24,12 @@ static int gui_quit_popup(void *data)
     gui_text(_("File Has Unsaved Changes"));
 
     gui_row_begin(0);
-    if (gui_button(_("Quit"), 0, 0)) {
+    if (gui_button(_("(Q)uit"), 0, 0) || gui_is_key_pressed('Q')) {
         goxel.quit = true;
         ret = 1;
     }
-    if (gui_button(_("Cancel"), 0, 0)) {
+    if (gui_button(_("(C)ancel"), 0, 0) || gui_is_key_pressed('C') ||
+            gui_is_key_pressed(KEY_ESCAPE)) {
         ret = 2;
     }
     gui_row_end();
@@ -41,5 +42,6 @@ void gui_query_quit(void)
         goxel.quit = true;
         return;
     }
-    gui_open_popup("##Quit", GUI_POPUP_RESIZE, NULL, gui_quit_popup);
+    gui_open_popup("##Quit", GUI_POPUP_RESIZE | GUI_POPUP_NAV, NULL,
+                   gui_quit_popup);
 }

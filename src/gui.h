@@ -149,6 +149,7 @@ bool gui_layer_item(int idx, int icons_count, const int *icons,
                     char *name, int len);
 
 bool gui_is_key_down(int key);
+bool gui_is_key_pressed(int key);
 
 bool gui_is_item_activated(void);
 bool gui_is_item_deactivated(void);
@@ -158,6 +159,7 @@ void gui_query_quit(void);
 enum {
     GUI_POPUP_FULL      = 1 << 0,
     GUI_POPUP_RESIZE    = 1 << 1,
+    GUI_POPUP_NAV       = 1 << 2, // Tab / Shift Tab between the buttons.
 };
 
 

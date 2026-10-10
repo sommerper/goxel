@@ -715,6 +715,12 @@ static void gui_iter(const inputs_t *inputs)
     gui->scrolling = (gui->scrolling & 1) ? 2 : 0;
     gui->can_move_window = (gui->can_move_window & 1) ? 2 : 0;
 
+    // Only enable keyboard navigation in the popups that ask for it.
+    io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+    if (gui->popup_count &&
+            (gui->popup[gui->popup_count - 1].flags & GUI_POPUP_NAV))
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
     // Old code, to remove.
     ImGui::NewFrame();
     ImGuizmo::BeginFrame();
@@ -1813,6 +1819,11 @@ bool gui_layer_item(int idx, int icons_count, const int *icons,
 bool gui_is_key_down(int key)
 {
     return ImGui::IsKeyDown((ImGuiKey)key);
+}
+
+bool gui_is_key_pressed(int key)
+{
+    return ImGui::IsKeyPressed((ImGuiKey)key, false);
 }
 
 bool gui_menu_bar_begin(void)
