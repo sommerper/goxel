@@ -27,6 +27,7 @@ layer_t *layer_new(const char *name)
     if (name) strncpy(layer->name, name, sizeof(layer->name) - 1);
     layer->volume = volume_new();
     mat4_set_identity(layer->mat);
+    layer->opacity = 100;
     return layer;
 }
 
@@ -51,6 +52,7 @@ uint32_t layer_get_key(const layer_t *layer)
     key = 0;
     key = XXH32(&volume_key, sizeof(volume_key), key);
     key = XXH32(&layer->visible, sizeof(layer->visible), key);
+    key = XXH32(&layer->opacity, sizeof(layer->opacity), key);
     key = XXH32(&layer->name, sizeof(layer->name), key);
     key = XXH32(&layer->box, sizeof(layer->box), key);
     key = XXH32(&layer->mat, sizeof(layer->mat), key);
@@ -72,6 +74,7 @@ layer_t *layer_copy(layer_t *other)
     layer->ref = 1;
     memcpy(layer->name, other->name, sizeof(layer->name));
     layer->visible = other->visible;
+    layer->opacity = other->opacity;
     layer->volume = volume_copy(other->volume);
     layer->image = texture_copy(other->image);
     layer->material = other->material;

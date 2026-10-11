@@ -415,6 +415,9 @@ void save_to_file(const image_t *img, const char *path)
         }
         chunk_write_dict_value(&c, out, "visible", &layer->visible,
                                sizeof(layer->visible));
+        if (layer->opacity != 100)
+            chunk_write_dict_value(&c, out, "opacity", &layer->opacity,
+                                   sizeof(layer->opacity));
         if (layer == img->active_layer)
             chunk_write_dict_value(&c, out, "active", NULL, 0);
 
@@ -685,6 +688,7 @@ int load_from_file(const char *path, bool replace)
                 }
                 DICT_CPY("color", layer->color);
                 DICT_CPY("visible", layer->visible);
+                DICT_CPY("opacity", layer->opacity);
                 if (strcmp(dict_key, "active") == 0)
                     active_layer = layer;
                 if (DICT_CPY("material", material_idx))

@@ -1213,6 +1213,7 @@ static void render_symmetry_axis(
 void goxel_render_view(const float viewport[4], bool render_mode)
 {
     const layer_t *layer;
+    material_t material;
     renderer_t *rend = &goxel.rend;
     const uint8_t layer_box_color[4] = {128, 128, 255, 255};
     int effects = 0;
@@ -1231,8 +1232,10 @@ void goxel_render_view(const float viewport[4], bool render_mode)
     effects |= goxel.view_effects;
 
     for (layer = goxel_get_render_layers(true); layer; layer = layer->next) {
-        if (layer->visible && layer->volume)
-            render_volume(rend, layer->volume, layer->material, effects);
+        if (!layer->visible || !layer->volume || !layer->opacity) continue;
+        material = layer->material ? *layer->material : MATERIAL_DEFAULT;
+        material.base_color[3] *= layer->opacity / 100.f;
+        render_volume(rend, layer->volume, &material, effects);
     }
 
     if (!box_is_null(goxel.image->active_layer->box))
@@ -1381,10 +1384,12 @@ const layer_t *goxel_get_render_layers(bool with_tool_preview)
                 volume_set(layer->volume, goxel.tool_volume);
             }
 
-            // Don't merge different materials unless we do a boolean op.
+            // Don't merge different materials or opacities unless we do a
+            // boolean op.
             no_merge = (goxel.render_layers == NULL) || (
-                (layer->mode == MODE_OVER) &&
-                (goxel.render_layers->prev->material != layer->material));
+                (layer->mode == MODE_OVER) && (
+                 (goxel.render_layers->prev->material != layer->material) ||
+                 (goxel.render_layers->prev->opacity != layer->opacity)));
 
             if (no_merge) {
                 DL_APPEND(goxel.render_layers, layer);

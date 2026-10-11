@@ -105,6 +105,7 @@ static layer_t *layer_clone(layer_t *other)
     len = sizeof(layer->name) - 1 - strlen(" clone");
     snprintf(layer->name, sizeof(layer->name), "%.*s clone", len, other->name);
     layer->visible = other->visible;
+    layer->opacity = other->opacity;
     layer->material = other->material;
     layer->volume = volume_copy(other->volume);
     mat4_set_identity(layer->mat);

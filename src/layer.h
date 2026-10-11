@@ -33,6 +33,7 @@ struct layer {
     const material_t  *material;
     int         id;         // Uniq id in the image (for clones).
     bool        visible;
+    int         opacity;    // 0-100, viewport only.
     char        name[256];  // 256 chars max.
     float       box[4][4];  // Bounding box.
     float       mat[4][4];
