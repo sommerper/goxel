@@ -303,7 +303,7 @@ int goxel_unproject(const float viewport[4],
         if (!(snap_mask & (1 << i))) continue;
         if ((1 << i) == SNAP_VOLUME) {
             r = goxel_unproject_on_volume(viewport, pos,
-                            goxel_get_layers_volume(goxel.image), p, n);
+                            goxel_get_snap_volume(), p, n);
         }
         if ((1 << i) == SNAP_PLANE) {
             r = goxel_unproject_on_plane(
@@ -1323,6 +1323,15 @@ const volume_t *goxel_get_layers_volume(const image_t *img)
         }
     }
     return goxel.layers_volume_;
+}
+
+const volume_t *goxel_get_snap_volume(void)
+{
+    // Also makes sure the shape layers volumes are up to date.
+    const volume_t *volume = goxel_get_layers_volume(goxel.image);
+    if (goxel.snap_active_layer_only)
+        return goxel.image->active_layer->volume;
+    return volume;
 }
 
 const volume_t *goxel_get_render_volume(const image_t *img)

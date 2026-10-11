@@ -499,6 +499,7 @@ typedef struct goxel
     } clipboard;
 
     int        snap_mask;    // Global snap mask (can edit in the GUI).
+    bool       snap_active_layer_only; // Ignore the other layers voxels.
     float      snap_offset;  // Only for brush tool, remove that?
 
     float      plane[4][4];         // The snapping plane.
@@ -616,6 +617,8 @@ void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
                          bool capture_keys);
 
 const volume_t *goxel_get_layers_volume(const image_t *img);
+// The volume tools snap on: all visible layers, or only the active one.
+const volume_t *goxel_get_snap_volume(void);
 const volume_t *goxel_get_render_volume(const image_t *img);
 
 /*

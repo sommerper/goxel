@@ -134,6 +134,9 @@ void gui_layers_panel(void)
 
     gui_row_end();
 
+    gui_checkbox(_("Active layer only"), &goxel.snap_active_layer_only,
+                 _("Tools ignore the voxels of the other layers"));
+
     layer = goxel.image->active_layer;
     bounded = !box_is_null(layer->box);
 
