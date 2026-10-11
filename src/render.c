@@ -936,6 +936,10 @@ static float item_sort_value(const render_item_t *a)
     // Then all the non transparent volumes.
     if (a->type == ITEM_VOLUME && a->material.base_color[3] == 1) return 2;
 
+    // Then the wireframes, so that they show through transparent volumes.
+    if ((a->type == ITEM_MODEL3D) && (a->effects & EFFECT_WIREFRAME))
+        return 3;
+
     // Then all the transparent volumes.
     if (a->type == ITEM_VOLUME && a->material.base_color[3] < 1) return 4;
 
