@@ -144,10 +144,17 @@ static int on_drag(gesture3d_t *gest)
     return 0;
 }
 
+// Without GIZMO_TRANSLATION the arrows only move their face.
+static bool arrows_resize(void)
+{
+    return (g_data.flags & GIZMO_GROW) && !(g_data.flags & GIZMO_TRANSLATION);
+}
+
 static int on_gizmo_hover(gesture3d_t *gest)
 {
-    goxel_add_hint(HINT_LARGE, GLYPH_MOUSE_LMB, _("Drag to move"));
-    if (g_data.flags & GIZMO_GROW)
+    goxel_add_hint(HINT_LARGE, GLYPH_MOUSE_LMB,
+                   arrows_resize() ? _("Drag to resize") : _("Drag to move"));
+    if ((g_data.flags & GIZMO_GROW) && !arrows_resize())
         goxel_add_hint(0, "Shift+" GLYPH_MOUSE_LMB, _("Resize"));
     if (g_data.flags & GIZMO_MOVE_CONTENT) {
         goxel_add_hint(0, "Ctrl+" GLYPH_MOUSE_LMB, _("Move content"));
@@ -164,7 +171,8 @@ static int on_gizmo_drag(gesture3d_t *gest)
     int face = gest->user_key;
     float box[4][4];
 
-    goxel_add_hint(HINT_LARGE, GLYPH_MOUSE_LMB, _("Drag to move"));
+    goxel_add_hint(HINT_LARGE, GLYPH_MOUSE_LMB,
+                   arrows_resize() ? _("Drag to resize") : _("Drag to move"));
     g_data.gesture_state = gest->state;
 
     if (gest->state == GESTURE3D_STATE_BEGIN) {
@@ -181,8 +189,8 @@ static int on_gizmo_drag(gesture3d_t *gest)
     mat4_copy(g_data.start_box, box);
     // Shift: only move the arrow's face, growing the box in its direction.
     // With Ctrl too, the caller stretches the content into the new space.
-    if ((g_data.flags & GIZMO_GROW) &&
-            (gest->flags & GESTURE3D_FLAG_SHIFT)) {
+    if (arrows_resize() || ((g_data.flags & GIZMO_GROW) &&
+            (gest->flags & GESTURE3D_FLAG_SHIFT))) {
         mat4_mul(g_data.start_box, FACES_MATS[face], face_plane);
         vec3_add(face_plane[3], v, face_plane[3]);
         box_move_face(g_data.start_box, face, face_plane[3], box);

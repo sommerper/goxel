@@ -517,6 +517,7 @@ typedef struct goxel
     tool_t     *tool;
     float      tool_radius;
     bool       pathtrace; // Render pathtraced mode.
+    bool       edit_image_box; // Image panel open: gizmos resize the image.
 
     struct {
         float  rotation[4];

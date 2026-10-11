@@ -969,6 +969,19 @@ static void stretch_selection(const float screen_dir[3], int sign)
     image_history_push(img);
 }
 
+// While the image panel is open, the gizmos resize the image box instead of
+// running the tool.
+static void image_box_iter(void)
+{
+    float transf[4][4];
+    image_t *img = goxel.image;
+    int state = box_edit(img->box, GIZMO_GROW, transf);
+
+    if (!state) return;
+    mat4_mul(transf, img->box, img->box);
+    if (state == GESTURE3D_STATE_END) image_history_push(img);
+}
+
 // XXX: Cleanup this.
 void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
                          bool capture_keys)
@@ -1029,7 +1042,10 @@ void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
         tool_before_pick = NULL;
     }
 
-    if (!goxel.pathtrace) {
+    if (goxel.pathtrace) {
+    } else if (goxel.edit_image_box) {
+        image_box_iter();
+    } else {
         tool_iter(goxel.tool, &painter, viewport);
     }
 

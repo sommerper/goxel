@@ -20,6 +20,7 @@
 #define GIZMOS_H
 
 enum {
+    // Arrows move the box.  Without it, GIZMO_GROW arrows move their face.
     GIZMO_TRANSLATION = 1 << 0,
     GIZMO_GROW        = 1 << 1,
     // The caller moves the content on Ctrl + arrow drag, and stretches it on
