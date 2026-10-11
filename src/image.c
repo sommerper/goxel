@@ -173,6 +173,9 @@ static void image_restore(image_t *img, const image_t *snap)
     layer_t *layer, *snap_layer;
     camera_t *camera, *snap_camera;
     material_t *material, *snap_material;
+    // Layer selection isn't part of the undo history: keep the current
+    // active layer if it still exists in the snapshot.
+    int active_id = img->active_layer ? img->active_layer->id : 0;
     // Note: this would be easier if we has some generic object array
     // objects.
 
@@ -200,6 +203,9 @@ static void image_restore(image_t *img, const image_t *snap)
             img->active_layer = layer;
     }
     assert(img->active_layer);
+    DL_FOREACH(img->layers, layer) {
+        if (layer->id == active_id) img->active_layer = layer;
+    }
 
     img->cameras = NULL;
     img->active_camera = NULL;

@@ -306,8 +306,29 @@ static void test_save_tool(void)
     sys_delete_file("/tmp/goxel_test.gox");
 }
 
+static void test_undo_keeps_active_layer(void)
+{
+    const uint8_t white[4] = {255, 255, 255, 255};
+    image_t *img = goxel.image;
+    layer_t *first = img->active_layer;
+    int first_id = first->id;
+
+    // Select the first layer after adding a second one, edit, then undo.
+    image_add_layer(img, NULL);
+    image_history_push(img);
+    img->active_layer = first;
+    volume_set_at(first->volume, NULL, (int[]){0, 0, 0}, white);
+    image_history_push(img);
+    image_undo(img);
+    TEST(img->active_layer->id == first_id);
+    TEST(!has_voxel(img->active_layer->volume, 0, 0, 0));
+    image_delete(goxel.image);
+    goxel.image = image_new();
+}
+
 void tests_run(void)
 {
+    test_undo_keeps_active_layer();
     test_revolve();
     test_revolve_selection();
     test_revolve_symmetry();
