@@ -372,6 +372,7 @@ int goxel_unproject(const float viewport[4],
 
 static int on_drag(const gesture_t *gest, void *user);
 static int on_drag_rotate(const gesture_t *gest, void *user);
+static int on_drag_sub(const gesture_t *gest, void *user);
 static int on_pan(const gesture_t *gest, void *user);
 static int on_zoom(const gesture_t *gest, void *user);
 static int on_rotate(const gesture_t *gest, void *user);
@@ -386,8 +387,10 @@ static void goxel_init_sound()
 #endif
 }
 
-void goxel_add_gesture(int type, int button,
-                       int (*fn)(const gesture_t *gest, void *user))
+static gesture_t *g_drag_sub; // Right drag subtract gesture.
+
+static gesture_t *goxel_add_gesture(
+        int type, int button, int (*fn)(const gesture_t *gest, void *user))
 {
     gesture_t *gest;
 
@@ -398,6 +401,7 @@ void goxel_add_gesture(int type, int button,
         .callback = fn,
     };
     arrput(goxel.gestures, gest);
+    return gest;
 }
 
 static void goxel_remove_gesture(int (*fn)(const gesture_t *gest, void *user))
@@ -465,11 +469,14 @@ void goxel_init(void)
 
     goxel_load_recent_files();
 
-    goxel_reset();
-
+    // Added before goxel_reset appends the keymaps, so that right drag
+    // subtract gets a chance before the right drag keymap.
     goxel_add_gesture(GESTURE_HOVER, 0, on_hover);
     goxel_add_gesture(GESTURE_DRAG, GESTURE_LMB, on_drag_rotate);
     goxel_add_gesture(GESTURE_DRAG, GESTURE_LMB, on_drag);
+    g_drag_sub = goxel_add_gesture(GESTURE_DRAG, GESTURE_RMB, on_drag_sub);
+
+    goxel_reset();
 }
 
 // The first matching keymap wins, so modifier combos go before plain MMB.
@@ -761,6 +768,32 @@ static int on_drag_rotate(const gesture_t *gest, void *user)
     return on_rotate(gest, user);
 }
 
+/*
+ * Right drag subtracts with the brush and shape tools when it starts over
+ * voxels.  Otherwise fail, so that the right drag keymap (rotate) gets it.
+ */
+static int on_drag_sub(const gesture_t *gest, void *user)
+{
+    float pos[3], normal[3];
+    int i;
+
+    if (gest->state == GESTURE_BEGIN) {
+        if (goxel.tool->id != TOOL_BRUSH && goxel.tool->id != TOOL_SHAPE)
+            return 1;
+        if (!goxel_unproject(gest->viewport, gest->pos, SNAP_VOLUME,
+                             NULL, 0, pos, normal))
+            return 1;
+        // Only press from the next frame, once the tools have updated their
+        // snap offset for the subtract mode.
+        return 0;
+    }
+    if (gest->state == GESTURE_UPDATE) {
+        for (i = 0; i < goxel.gesture3ds_count; i++)
+            goxel.gesture3ds[i].flags |= GESTURE3D_FLAG_PRESSED;
+    }
+    return on_drag(gest, user);
+}
+
 // XXX: can we merge this with unproject?
 static bool unproject_delta(const float win[3], const float model[4][4],
                             const float proj[4][4], const float viewport[4],
@@ -977,6 +1010,8 @@ void goxel_mouse_in_view(const float viewport[4], const inputs_t *inputs,
         if (goxel.painter.mode == MODE_SUB) painter.mode = MODE_OVER;
         if (goxel.painter.mode == MODE_OVER) painter.mode = MODE_SUB;
     }
+    if (g_drag_sub->state >= GESTURE_BEGIN && g_drag_sub->state <= GESTURE_END)
+        painter.mode = MODE_SUB;
     // Only apply smoothness for paint mode, that is we don't support
     // semi 'transparent' voxels anymore.
     if (painter.mode != MODE_PAINT) painter.smoothness = 0;
