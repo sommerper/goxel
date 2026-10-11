@@ -304,6 +304,7 @@ void image_delete(image_t *img)
 
     free(img->path);
     free(img->export_path);
+    volume_delete(img->selection_mask);
 
     DL_FOREACH_SAFE2 (img->history, snap, snap_tmp, history_next) {
         DL_DELETE2(img->history, snap, history_prev, history_next);
