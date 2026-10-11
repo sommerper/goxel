@@ -198,7 +198,7 @@ static void test_revolve_selection(void)
     img->selection_mask = volume_new();
     volume_set_at(img->selection_mask, NULL, (int[]){0, 0, 0}, white);
     volume_set_at(img->selection_mask, NULL, (int[]){2, 0, 0}, white);
-    image_revolve_selection(img, 2, (int[]){-1, 0, 0});
+    image_revolve_selection(img, 2, (int[]){-1, 0, 0}, 0, NULL);
     TEST(has_voxel(volume, -2, 0, 0));
     TEST(!has_voxel(volume, 1, 0, 0));
     TEST(has_voxel(volume, 2, 0, 3));
@@ -207,18 +207,37 @@ static void test_revolve_selection(void)
 
     // Revolving again replaces the previous result: no growth, and the
     // -X result is gone when we switch to +X.
-    image_revolve_selection(img, 2, (int[]){-1, 0, 0});
+    image_revolve_selection(img, 2, (int[]){-1, 0, 0}, 0, NULL);
     TEST(!has_voxel(volume, -6, 0, 0));
-    image_revolve_selection(img, 2, (int[]){1, 0, 0});
+    image_revolve_selection(img, 2, (int[]){1, 0, 0}, 0, NULL);
     TEST(has_voxel(volume, 4, 0, 0));
     TEST(!has_voxel(volume, -2, 0, 0));
     TEST(has_voxel(volume, 0, 0, 0));
 
     // After any other edit, the previous result is kept.
     volume_set_at(volume, NULL, (int[]){9, 9, 9}, white);
-    image_revolve_selection(img, 2, (int[]){-1, 0, 0});
+    image_revolve_selection(img, 2, (int[]){-1, 0, 0}, 0, NULL);
     TEST(has_voxel(volume, 4, 0, 0));
     TEST(has_voxel(volume, -2, 0, 0));
+    image_delete(img);
+}
+
+static void test_revolve_symmetry(void)
+{
+    const uint8_t white[4] = {255, 255, 255, 255};
+    image_t *img = image_new();
+    volume_t *volume = img->active_layer->volume;
+
+    // Nothing selected: the whole layer spins.  With Z symmetry around
+    // z = 0, like the brush, voxels at z = 0 are mirrored to z = -1.
+    volume_set_at(volume, NULL, (int[]){0, 0, 0}, white);
+    volume_set_at(volume, NULL, (int[]){2, 0, 0}, white);
+    image_revolve_selection(img, 2, (int[]){-1, 0, 0}, 1 << 2,
+                            (float[]){0, 0, 0});
+    TEST(has_voxel(volume, -2, 0, 0));
+    TEST(has_voxel(volume, -2, 0, -1));
+    TEST(has_voxel(volume, 0, 2, -1));
+    TEST(!has_voxel(volume, 0, 2, 1));
     image_delete(img);
 }
 
@@ -226,6 +245,7 @@ void tests_run(void)
 {
     test_revolve();
     test_revolve_selection();
+    test_revolve_symmetry();
     test_save_active_layer();
     test_load_file_v2();
     test_load_file_v1_with_preview();

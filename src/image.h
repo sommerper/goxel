@@ -90,8 +90,13 @@ bool image_layer_can_edit(const image_t *img, const layer_t *layer);
  *   side - {0, 0, 0} to put the axis through the center of the selected
  *          voxels, or a direction like {-1, 0, 0} to put it through the
  *          outermost voxels on that side.
+ *   symmetry        - Bitfield X Y Z of planes to mirror the result across,
+ *                     like <painter_t>.
+ *   symmetry_origin - Position of the symmetry planes, ignored if
+ *                     symmetry is 0.
  */
-void image_revolve_selection(image_t *img, int axis, const int side[3]);
+void image_revolve_selection(image_t *img, int axis, const int side[3],
+                             int symmetry, const float symmetry_origin[3]);
 
 material_t *image_add_material(image_t *img, material_t *mat);
 void image_delete_material(image_t *img, material_t *mat);

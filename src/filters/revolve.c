@@ -33,7 +33,7 @@ static int gui(filter_t *filter)
 
     gui_text_wrapped("Spin the selection, or the current layer if nothing "
                      "is selected, around an axis through its center or "
-                     "one of its sides.");
+                     "one of its sides.  Symmetry mirrors the result.");
 
     // through: 0 for the center, then -X, +X, -Y, +Y, -Z, +Z.
     gui_group_begin("Axis through");
@@ -55,7 +55,9 @@ static int gui(filter_t *filter)
     for (axis = 0; axis < 3; axis++) {
         snprintf(buf, sizeof(buf), "Revolve %s", AXIS_NAMES[axis]);
         if (gui_button(buf, 1.0, 0)) {
-            image_revolve_selection(goxel.image, axis, side);
+            image_revolve_selection(goxel.image, axis, side,
+                                    goxel.painter.symmetry,
+                                    goxel.painter.symmetry_origin);
             image_history_push(goxel.image);
         }
     }
