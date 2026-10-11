@@ -93,7 +93,7 @@ static void move_content(tool_selection_t *tool, int state, bool stretch)
 {
     image_t *img = goxel.image;
     volume_t *volume = img->active_layer->volume;
-    volume_t *tmp;
+    volume_t *tmp, *mirror;
     float transf[4][4] = MAT4_IDENTITY;
     float a[3], b[3];
     int dir[3] = {0}, n = 0, i;
@@ -117,12 +117,24 @@ static void move_content(tool_selection_t *tool, int state, bool stretch)
         dir[i] = transf[3][i] > 0 ? 1 : -1;
     }
     tmp = volume_copy(tool->start_content);
-    if (stretch)
+    volume_set(volume, tool->start_volume);
+    if (stretch) {
         volume_stretch(tmp, dir, n, goxel.painter.symmetry,
                        goxel.painter.symmetry_origin);
-    else
+    } else {
         volume_move(tmp, transf);
-    volume_set(volume, tool->start_volume);
+        // With symmetry, lift the mirror images of the selection too and
+        // put back the mirror images of the moved voxels.
+        if (goxel.painter.symmetry) {
+            mirror = volume_copy(img->selection_mask);
+            volume_add_symmetry(mirror, goxel.painter.symmetry,
+                                goxel.painter.symmetry_origin);
+            volume_merge(volume, mirror, MODE_SUB, NULL);
+            volume_delete(mirror);
+            volume_add_symmetry(tmp, goxel.painter.symmetry,
+                                goxel.painter.symmetry_origin);
+        }
+    }
     volume_merge(volume, tmp, MODE_OVER, NULL);
     volume_delete(tmp);
 
