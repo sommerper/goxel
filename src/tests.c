@@ -148,8 +148,84 @@ static void test_save_active_layer(void)
     sys_delete_file("/tmp/goxel_test.gox");
 }
 
+static void test_revolve(void)
+{
+    const uint8_t red[4] = {255, 0, 0, 255}, green[4] = {0, 255, 0, 255};
+    const float center[3] = {0.5, 0.5, 0.5};
+    volume_t *volume = volume_new();
+    uint8_t c[4];
+
+    // Profile in the XZ plane, revolved around Z through voxel (0, 0, 0).
+    volume_set_at(volume, NULL, (int[]){0, 0, 0}, red);
+    volume_set_at(volume, NULL, (int[]){3, 0, 1}, green);
+    volume_revolve(volume, 2, center);
+
+    volume_get_at(volume, NULL, (int[]){0, 0, 0}, c);
+    TEST(memcmp(c, red, 4) == 0);
+    volume_get_at(volume, NULL, (int[]){1, 0, 0}, c);
+    TEST(c[3] == 0);
+    volume_get_at(volume, NULL, (int[]){-3, 0, 1}, c);
+    TEST(memcmp(c, green, 4) == 0);
+    volume_get_at(volume, NULL, (int[]){0, -3, 1}, c);
+    TEST(memcmp(c, green, 4) == 0);
+    volume_get_at(volume, NULL, (int[]){2, 2, 1}, c);
+    TEST(memcmp(c, green, 4) == 0);
+    volume_get_at(volume, NULL, (int[]){0, 0, 1}, c);
+    TEST(c[3] == 0);
+    volume_get_at(volume, NULL, (int[]){3, 3, 1}, c);
+    TEST(c[3] == 0);
+    volume_delete(volume);
+}
+
+static bool has_voxel(const volume_t *volume, int x, int y, int z)
+{
+    uint8_t c[4];
+    volume_get_at(volume, NULL, (int[]){x, y, z}, c);
+    return c[3] != 0;
+}
+
+static void test_revolve_selection(void)
+{
+    const uint8_t white[4] = {255, 255, 255, 255};
+    image_t *img = image_new();
+    volume_t *volume = img->active_layer->volume;
+
+    // A profile along X at z = 0 is selected, the voxel at z = 3 is not.
+    // Revolve around Z, with the axis through the profile's -X end.
+    volume_set_at(volume, NULL, (int[]){0, 0, 0}, white);
+    volume_set_at(volume, NULL, (int[]){2, 0, 0}, white);
+    volume_set_at(volume, NULL, (int[]){2, 0, 3}, white);
+    img->selection_mask = volume_new();
+    volume_set_at(img->selection_mask, NULL, (int[]){0, 0, 0}, white);
+    volume_set_at(img->selection_mask, NULL, (int[]){2, 0, 0}, white);
+    image_revolve_selection(img, 2, (int[]){-1, 0, 0});
+    TEST(has_voxel(volume, -2, 0, 0));
+    TEST(!has_voxel(volume, 1, 0, 0));
+    TEST(has_voxel(volume, 2, 0, 3));
+    TEST(!has_voxel(volume, -2, 0, 3));
+    TEST(!has_voxel(img->selection_mask, 0, -2, 0));
+
+    // Revolving again replaces the previous result: no growth, and the
+    // -X result is gone when we switch to +X.
+    image_revolve_selection(img, 2, (int[]){-1, 0, 0});
+    TEST(!has_voxel(volume, -6, 0, 0));
+    image_revolve_selection(img, 2, (int[]){1, 0, 0});
+    TEST(has_voxel(volume, 4, 0, 0));
+    TEST(!has_voxel(volume, -2, 0, 0));
+    TEST(has_voxel(volume, 0, 0, 0));
+
+    // After any other edit, the previous result is kept.
+    volume_set_at(volume, NULL, (int[]){9, 9, 9}, white);
+    image_revolve_selection(img, 2, (int[]){-1, 0, 0});
+    TEST(has_voxel(volume, 4, 0, 0));
+    TEST(has_voxel(volume, -2, 0, 0));
+    image_delete(img);
+}
+
 void tests_run(void)
 {
+    test_revolve();
+    test_revolve_selection();
     test_save_active_layer();
     test_load_file_v2();
     test_load_file_v1_with_preview();

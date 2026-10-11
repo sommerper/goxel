@@ -181,6 +181,46 @@ void volume_move(volume_t *volume, const float mat[4][4])
     volume_remove_empty_tiles(volume, false);
 }
 
+// Distance band of the voxel (i, j) from the axis, in the plane (u, v).
+static int ring(int i, int j, const float c[2])
+{
+    return roundf(hypotf(i + 0.5f - c[0], j + 0.5f - c[1]));
+}
+
+// ponytail: scans an r*r square per voxel, so revolving an already solid
+// shape is O(n * r^2); dedupe (height, ring) pairs first if that gets slow.
+void volume_revolve(volume_t *volume, int axis, const float center[3])
+{
+    volume_t *src = volume_copy(volume);
+    volume_iterator_t iter;
+    volume_accessor_t acc;
+    int u = (axis + 1) % 3, v = (axis + 2) % 3;
+    int pos[3], p[3], r, i, j, ci, cj;
+    float c[2] = {center[u], center[v]};
+    uint8_t color[4];
+
+    acc = volume_get_accessor(volume);
+    iter = volume_get_iterator(src,
+            VOLUME_ITER_VOXELS | VOLUME_ITER_SKIP_EMPTY);
+    ci = floorf(c[0]);
+    cj = floorf(c[1]);
+    while (volume_iter(&iter, pos)) {
+        volume_get_at(src, &iter, pos, color);
+        if (color[3] == 0) continue;
+        r = ring(pos[u], pos[v], c);
+        p[axis] = pos[axis];
+        for (i = ci - r - 1; i <= ci + r + 1; i++) {
+            for (j = cj - r - 1; j <= cj + r + 1; j++) {
+                if (ring(i, j, c) != r) continue;
+                p[u] = i;
+                p[v] = j;
+                volume_set_at(volume, &acc, p, color);
+            }
+        }
+    }
+    volume_delete(src);
+}
+
 void volume_stretch(volume_t *volume, const int dir[3], int n)
 {
     float transf[4][4] = MAT4_IDENTITY;

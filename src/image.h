@@ -77,6 +77,22 @@ void image_history_resize(image_t *img, int size);
 
 bool image_layer_can_edit(const image_t *img, const layer_t *layer);
 
+/*
+ * Function: image_revolve_selection
+ * Spin the selected voxels of the active layer (the whole layer if nothing
+ * is selected) around an axis, see <volume_revolve>.  The selection is
+ * left as is.  Revolving again with nothing else changed in between replaces
+ * the previous result instead of adding to it.
+ *
+ * Parameters:
+ *   img  - The image.
+ *   axis - 0, 1 or 2 for an axis parallel to X, Y or Z.
+ *   side - {0, 0, 0} to put the axis through the center of the selected
+ *          voxels, or a direction like {-1, 0, 0} to put it through the
+ *          outermost voxels on that side.
+ */
+void image_revolve_selection(image_t *img, int axis, const int side[3]);
+
 material_t *image_add_material(image_t *img, material_t *mat);
 void image_delete_material(image_t *img, material_t *mat);
 

@@ -167,6 +167,18 @@ void volume_move(volume_t *volume, const float mat[4][4]);
  */
 void volume_stretch(volume_t *volume, const int dir[3], int n);
 
+/*
+ * Function: volume_revolve
+ * Spin a volume around an axis, like a lathe: each voxel becomes the ring
+ * of voxels at the same distance from the axis.
+ *
+ * Parameters:
+ *   volume - The volume to revolve.
+ *   axis   - 0, 1 or 2 for an axis parallel to X, Y or Z.
+ *   center - A point the axis goes through, in world coordinates.
+ */
+void volume_revolve(volume_t *volume, int axis, const float center[3]);
+
 void volume_shift_alpha(volume_t *volume, int v);
 
 // Compute the selection mask for a given condition.

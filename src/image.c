@@ -717,6 +717,59 @@ bool image_layer_can_edit(const image_t *img, const layer_t *layer)
     return !layer->base_id && !layer->image && !layer->shape;
 }
 
+void image_revolve_selection(image_t *img, int axis, const int side[3])
+{
+    // The layer as it was before the last revolve, and the image key right
+    // after it, so that revolving again replaces the previous result.
+    static volume_t *before = NULL;
+    static const layer_t *before_layer = NULL;
+    static uint32_t after_key = 0;
+    layer_t *layer = img->active_layer;
+    float center[3];
+    int i, aabb[2][3];
+    volume_t *content;
+    painter_t painter;
+
+    if (!image_layer_can_edit(img, layer)) return;
+
+    if (before && layer == before_layer && image_get_key(img) == after_key) {
+        volume_set(layer->volume, before);
+    } else {
+        volume_delete(before);
+        before = volume_copy(layer->volume);
+        before_layer = layer;
+    }
+
+    content = volume_copy(layer->volume);
+    if (!volume_is_empty(img->selection_mask)) {
+        volume_merge(content, img->selection_mask, MODE_INTERSECT, NULL);
+    } else if (!box_is_null(img->selection_box)) {
+        painter = (painter_t) {
+            .shape = &shape_cube,
+            .mode = MODE_INTERSECT,
+            .color = {255, 255, 255, 255},
+        };
+        volume_op(content, &painter, img->selection_box);
+    }
+    if (!volume_get_bbox(content, aabb, true)) {
+        volume_delete(content);
+        return;
+    }
+
+    // The axis goes through the bbox center, or the outermost voxels on
+    // the chosen side.
+    for (i = 0; i < 3; i++) {
+        center[i] = (aabb[0][i] + aabb[1][i]) / 2.f;
+        if (side[i] < 0) center[i] = aabb[0][i] + 0.5f;
+        if (side[i] > 0) center[i] = aabb[1][i] - 0.5f;
+    }
+
+    volume_revolve(content, axis, center);
+    volume_merge(layer->volume, content, MODE_OVER, NULL);
+    volume_delete(content);
+    after_key = image_get_key(img);
+}
+
 /*
  * Function: image_get_key
  * Return a value that is garantied to change when the image change.
