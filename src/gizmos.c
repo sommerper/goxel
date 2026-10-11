@@ -284,9 +284,11 @@ int box_edit(const float box[4][4], int flags, float transf[4][4])
         gizmo(box, i);
     }
 
+    // Shift or Ctrl + drag on the box goes to the tool (e.g. selection
+    // add/subtract) instead of moving the face.
     goxel_gesture3d(&(gesture3d_t) {
         .type = GESTURE_HOVER,
-        .buttons_mask = GESTURE3D_FLAG_CTRL,
+        .buttons_mask = GESTURE3D_FLAG_CTRL | GESTURE3D_FLAG_SHIFT,
         .snap_mask = SNAP_SHAPE_BOX,
         .snap_shape = MAT4_COPY(box),
         .callback = on_hover,
@@ -294,7 +296,7 @@ int box_edit(const float box[4][4], int flags, float transf[4][4])
     });
     goxel_gesture3d(&(gesture3d_t) {
         .type = GESTURE_DRAG,
-        .buttons_mask = GESTURE3D_FLAG_CTRL,
+        .buttons_mask = GESTURE3D_FLAG_CTRL | GESTURE3D_FLAG_SHIFT,
         .snap_mask = SNAP_SHAPE_BOX,
         .snap_shape = MAT4_COPY(box),
         .callback = on_drag,
