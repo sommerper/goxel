@@ -154,9 +154,24 @@ static int on_hover(gesture3d_t *gest)
 
 static int on_click(gesture3d_t *gest)
 {
-    // A short Shift/Ctrl drag ends up as a click: keep the selection.
-    if (gest->flags & (GESTURE3D_FLAG_SHIFT | GESTURE3D_FLAG_CTRL)) return 0;
-    action_exec2(ACTION_reset_selection);
+    tool_selection_t *tool = gest->user;
+    image_t *img = goxel.image;
+    float p[3];
+
+    if (!(gest->flags & (GESTURE3D_FLAG_SHIFT | GESTURE3D_FLAG_CTRL))) {
+        action_exec2(ACTION_reset_selection);
+        return 0;
+    }
+    // Shift/Ctrl click: add/remove the clicked voxel.
+    if (!(gest->snaped & SNAP_VOLUME)) return 0;
+    vec3_addk(gest->pos, gest->normal, -0.5, p);
+    bbox_from_extents(img->selection_box, p, 0.5, 0.5, 0.5);
+    if (tool->start_mask == NULL) tool->start_mask = volume_new();
+    if (img->selection_mask == NULL) img->selection_mask = volume_new();
+    volume_set(tool->start_mask, img->selection_mask);
+    tool->current_mode = (gest->flags & GESTURE3D_FLAG_SHIFT) ?
+                         MODE_OVER : MODE_SUB;
+    update_mask(tool);
     return 0;
 }
 
@@ -271,9 +286,14 @@ static int iter(tool_t *tool, const painter_t *painter,
         .name = "Selection Hover",
     });
 
+    // Shift/Ctrl click picks a voxel, so look through the selection box.
     goxel_gesture3d(&(gesture3d_t) {
         .type = GESTURE3D_TYPE_CLICK,
-        .snap_mask = snap_mask | SNAP_SELECTION_OUT,
+        .snap_mask = snap_mask | (
+                gui_is_key_down(KEY_LEFT_SHIFT) ||
+                gui_is_key_down(KEY_RIGHT_SHIFT) ||
+                gui_is_key_down(KEY_LEFT_CONTROL) ||
+                gui_is_key_down(KEY_RIGHT_CONTROL) ? 0 : SNAP_SELECTION_OUT),
         .callback = on_click,
         .user = selection,
         .name = "Selection Click",
