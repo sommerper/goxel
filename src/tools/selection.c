@@ -118,7 +118,8 @@ static void move_content(tool_selection_t *tool, int state, bool stretch)
     }
     tmp = volume_copy(tool->start_content);
     if (stretch)
-        volume_stretch(tmp, dir, n);
+        volume_stretch(tmp, dir, n, goxel.painter.symmetry,
+                       goxel.painter.symmetry_origin);
     else
         volume_move(tmp, transf);
     volume_set(volume, tool->start_volume);
@@ -127,7 +128,7 @@ static void move_content(tool_selection_t *tool, int state, bool stretch)
 
     if (state == GESTURE3D_STATE_END) {
         if (stretch)
-            volume_stretch(img->selection_mask, dir, n);
+            volume_stretch(img->selection_mask, dir, n, 0, NULL);
         else
             volume_move(img->selection_mask, transf);
         volume_delete(tool->start_volume);

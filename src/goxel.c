@@ -956,12 +956,13 @@ static void stretch_selection(const float screen_dir[3], int sign)
         };
         volume_op(content, &painter, img->selection_box);
     }
-    volume_stretch(content, dir, 1);
+    volume_stretch(content, dir, 1, goxel.painter.symmetry,
+                   goxel.painter.symmetry_origin);
     volume_merge(layer->volume, content, MODE_OVER, NULL);
     volume_delete(content);
 
     if (!volume_is_empty(img->selection_mask))
-        volume_stretch(img->selection_mask, dir, 1);
+        volume_stretch(img->selection_mask, dir, 1, 0, NULL);
     mat4_copy(img->selection_box, box);
     vec3_iadd(box[3], VEC(dir[0], dir[1], dir[2]));
     box_union(img->selection_box, box, img->selection_box);

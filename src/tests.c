@@ -241,6 +241,23 @@ static void test_revolve_symmetry(void)
     image_delete(img);
 }
 
+static void test_stretch_symmetry(void)
+{
+    const uint8_t white[4] = {255, 255, 255, 255};
+    volume_t *volume = volume_new();
+
+    // With X symmetry around x = 0, only the new voxels get mirrored.
+    volume_set_at(volume, NULL, (int[]){2, 0, 0}, white);
+    volume_set_at(volume, NULL, (int[]){3, 0, 0}, white);
+    volume_stretch(volume, (int[]){1, 0, 0}, 2, 1 << 0, (float[]){0, 0, 0});
+    TEST(has_voxel(volume, 5, 0, 0));
+    TEST(has_voxel(volume, -5, 0, 0));
+    TEST(has_voxel(volume, -6, 0, 0));
+    TEST(!has_voxel(volume, -3, 0, 0));
+    TEST(!has_voxel(volume, -7, 0, 0));
+    volume_delete(volume);
+}
+
 static void test_save_selection(void)
 {
     const uint8_t white[4] = {255, 255, 255, 255};
@@ -294,6 +311,7 @@ void tests_run(void)
     test_revolve();
     test_revolve_selection();
     test_revolve_symmetry();
+    test_stretch_symmetry();
     test_save_active_layer();
     test_save_selection();
     test_save_tool();

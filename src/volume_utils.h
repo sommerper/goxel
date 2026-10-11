@@ -161,11 +161,14 @@ void volume_move(volume_t *volume, const float mat[4][4]);
  * Grow a volume n voxels along an axis, repeating its last voxels.
  *
  * Parameters:
- *   volume - The volume to stretch.
- *   dir    - Unit axis direction, for example {0, 0, -1}.
- *   n      - Number of voxels to add.
+ *   volume   - The volume to stretch.
+ *   dir      - Unit axis direction, for example {0, 0, -1}.
+ *   n        - Number of voxels to add.
+ *   symmetry - Bitfield X Y Z of planes to mirror the new voxels across.
+ *   origin   - Position of the symmetry planes.
  */
-void volume_stretch(volume_t *volume, const int dir[3], int n);
+void volume_stretch(volume_t *volume, const int dir[3], int n,
+                    int symmetry, const float origin[3]);
 
 /*
  * Function: volume_revolve

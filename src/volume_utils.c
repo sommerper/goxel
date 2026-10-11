@@ -249,10 +249,11 @@ void volume_revolve(volume_t *volume, int axis, const float center[3])
     volume_delete(src);
 }
 
-void volume_stretch(volume_t *volume, const int dir[3], int n)
+void volume_stretch(volume_t *volume, const int dir[3], int n,
+                    int symmetry, const float origin[3])
 {
     float transf[4][4] = MAT4_IDENTITY;
-    volume_t *tmp;
+    volume_t *tmp, *orig = volume_copy(volume);
     int i;
 
     vec3_set(transf[3], dir[0], dir[1], dir[2]);
@@ -265,6 +266,15 @@ void volume_stretch(volume_t *volume, const int dir[3], int n)
         volume_set(volume, tmp);
         volume_delete(tmp);
     }
+    // Mirror only the new voxels, so the other side grows the same way.
+    if (symmetry) {
+        tmp = volume_copy(volume);
+        volume_merge(tmp, orig, MODE_SUB, NULL);
+        volume_add_symmetry(tmp, symmetry, origin);
+        volume_merge(volume, tmp, MODE_OVER, NULL);
+        volume_delete(tmp);
+    }
+    volume_delete(orig);
 }
 
 void volume_blit(volume_t *volume, const uint8_t *data,
