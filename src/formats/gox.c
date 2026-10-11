@@ -76,6 +76,17 @@
  *          pitch: radian
  *          yaw: radian
  *          intensity: float
+ *
+ *   TOOL: the active tool and symmetry:
+ *      [DICT] containing the following entries:
+ *          tool: action id of the tool, eg "tool_set_brush".
+ *          symmetry: int bitfield X Y Z.
+ *          symmetry_origin: float[3].
+ *
+ *   SELE: the selection, only if there is one:
+ *      blocks of the selection mask, same as in LAYR.
+ *      [DICT] containing the following entries:
+ *          box: the selection box.
  */
 
 // We create a hash table of all the blocks, so that blocks with the same
@@ -253,6 +264,58 @@ static const material_t *get_material(const image_t *img, int idx)
     return NULL;
 }
 
+// Add all the tiles of a volume into the blocks hash table.
+static void add_volume_blocks(block_hash_t **blocks_table,
+                              const volume_t *volume, int *index)
+{
+    volume_iterator_t iter;
+    block_hash_t *data;
+    int bpos[3];
+    uint64_t uid;
+
+    iter = volume_get_iterator(volume, VOLUME_ITER_TILES);
+    while (volume_iter(&iter, bpos)) {
+        volume_get_tile_data(volume, &iter, bpos, &uid);
+        HASH_FIND(hh, *blocks_table, &uid, sizeof(uid), data);
+        if (data) continue;
+        data = calloc(1, sizeof(*data));
+        data->v = volume_get_tile_data(volume, &iter, bpos, NULL);
+        assert(data->v);
+        data->uid = uid;
+        data->index = (*index)++;
+        HASH_ADD(hh, *blocks_table, uid, sizeof(data->uid), data);
+    }
+}
+
+// Write the number of blocks and the blocks list of a volume (can be NULL).
+static void write_volume_blocks(chunk_t *c, FILE *out,
+                                block_hash_t *blocks_table,
+                                const volume_t *volume)
+{
+    volume_iterator_t iter;
+    block_hash_t *data;
+    int nb_blocks = 0, bpos[3];
+    uint64_t uid;
+
+    if (volume) {
+        iter = volume_get_iterator(volume, VOLUME_ITER_TILES);
+        while (volume_iter(&iter, bpos)) nb_blocks++;
+    }
+    chunk_write_int32(c, out, nb_blocks);
+    if (!volume) return;
+    iter = volume_get_iterator(volume, VOLUME_ITER_TILES);
+    while (volume_iter(&iter, bpos)) {
+        volume_get_tile_data(volume, &iter, bpos, &uid);
+        HASH_FIND(hh, blocks_table, &uid, sizeof(uid), data);
+        assert(data);
+        chunk_write_int32(c, out, data->index);
+        chunk_write_int32(c, out, bpos[0]);
+        chunk_write_int32(c, out, bpos[1]);
+        chunk_write_int32(c, out, bpos[2]);
+        chunk_write_int32(c, out, 0);
+    }
+}
+
 void save_to_file(const image_t *img, const char *path)
 {
     // XXX: remove all empty blocks before saving.
@@ -260,13 +323,11 @@ void save_to_file(const image_t *img, const char *path)
     block_hash_t *blocks_table = NULL, *data, *data_tmp;
     layer_t *layer;
     chunk_t c;
-    int nb_blocks, index, size, bpos[3], material_idx;
-    uint64_t uid;
+    int index, size, material_idx;
     FILE *out;
     uint8_t *png, *preview;
     camera_t *camera;
     material_t *material;
-    volume_iterator_t iter;
 
     img = img ?: goxel.image;
     out = fopen(path, "wb");
@@ -293,19 +354,10 @@ void save_to_file(const image_t *img, const char *path)
     // Add all the blocks data into the hash table.
     index = 0;
     DL_FOREACH(img->layers, layer) {
-        iter = volume_get_iterator(layer->volume, VOLUME_ITER_TILES);
-        while (volume_iter(&iter, bpos)) {
-            volume_get_tile_data(layer->volume, &iter, bpos, &uid);
-            HASH_FIND(hh, blocks_table, &uid, sizeof(uid), data);
-            if (data) continue;
-            data = calloc(1, sizeof(*data));
-            data->v = volume_get_tile_data(layer->volume, &iter, bpos, NULL);
-            assert(data->v);
-            data->uid = uid;
-            data->index = index++;
-            HASH_ADD(hh, blocks_table, uid, sizeof(data->uid), data);
-        }
+        add_volume_blocks(&blocks_table, layer->volume, &index);
     }
+    if (img->selection_mask)
+        add_volume_blocks(&blocks_table, img->selection_mask, &index);
 
     // Write all the blocks chunks.
     HASH_ITER(hh, blocks_table, data, data_tmp) {
@@ -333,27 +385,8 @@ void save_to_file(const image_t *img, const char *path)
     // Write all the layers.
     DL_FOREACH(img->layers, layer) {
         chunk_write_start(&c, out, "LAYR");
-        nb_blocks = 0;
-        if (!layer->base_id && !layer->shape) {
-            iter = volume_get_iterator(layer->volume, VOLUME_ITER_TILES);
-            while (volume_iter(&iter, bpos)) {
-                nb_blocks++;
-            }
-        }
-        chunk_write_int32(&c, out, nb_blocks);
-        if (!layer->base_id && !layer->shape) {
-            iter = volume_get_iterator(layer->volume, VOLUME_ITER_TILES);
-            while (volume_iter(&iter, bpos)) {
-                volume_get_tile_data(layer->volume, &iter, bpos, &uid);
-                HASH_FIND(hh, blocks_table, &uid, sizeof(uid), data);
-                assert(data);
-                chunk_write_int32(&c, out, data->index);
-                chunk_write_int32(&c, out, bpos[0]);
-                chunk_write_int32(&c, out, bpos[1]);
-                chunk_write_int32(&c, out, bpos[2]);
-                chunk_write_int32(&c, out, 0);
-            }
-        }
+        write_volume_blocks(&c, out, blocks_table,
+                (!layer->base_id && !layer->shape) ? layer->volume : NULL);
         chunk_write_dict_value(&c, out, "name", layer->name,
                                strlen(layer->name));
         chunk_write_dict_value(&c, out, "mat", &layer->mat,
@@ -385,6 +418,16 @@ void save_to_file(const image_t *img, const char *path)
         if (layer == img->active_layer)
             chunk_write_dict_value(&c, out, "active", NULL, 0);
 
+        chunk_write_finish(&c, out);
+    }
+
+    // Write the selection.
+    if (!box_is_null(img->selection_box) ||
+            !volume_is_empty(img->selection_mask)) {
+        chunk_write_start(&c, out, "SELE");
+        write_volume_blocks(&c, out, blocks_table, img->selection_mask);
+        chunk_write_dict_value(&c, out, "box", &img->selection_box,
+                               sizeof(img->selection_box));
         chunk_write_finish(&c, out);
     }
 
@@ -423,6 +466,17 @@ void save_to_file(const image_t *img, const char *path)
                            sizeof(goxel.rend.settings.ambient));
     chunk_write_dict_value(&c, out, "shadow", &goxel.rend.settings.shadow,
                            sizeof(goxel.rend.settings.shadow));
+    chunk_write_finish(&c, out);
+
+    // Write the active tool and symmetry.
+    chunk_write_start(&c, out, "TOOL");
+    chunk_write_dict_value(&c, out, "tool", goxel.tool->action_id,
+                           strlen(goxel.tool->action_id));
+    chunk_write_dict_value(&c, out, "symmetry", &goxel.painter.symmetry,
+                           sizeof(goxel.painter.symmetry));
+    chunk_write_dict_value(&c, out, "symmetry_origin",
+                           &goxel.painter.symmetry_origin,
+                           sizeof(goxel.painter.symmetry_origin));
     chunk_write_finish(&c, out);
 
     HASH_ITER(hh, blocks_table, data, data_tmp) {
@@ -499,6 +553,32 @@ static block_hash_t *hash_find_at(block_hash_t *hash, int index)
     r; })
 
 
+// Read the blocks list of a LAYR or SELE chunk into a volume.
+static void read_volume_blocks(chunk_t *c, FILE *in,
+                               block_hash_t *blocks_table, volume_t *volume,
+                               int version)
+{
+    int i, nb_blocks, index, x, y, z;
+    block_hash_t *data;
+
+    nb_blocks = chunk_read_int32(c, in, __LINE__);
+    assert(nb_blocks >= 0);
+    for (i = 0; i < nb_blocks; i++) {
+        index = chunk_read_int32(c, in, __LINE__);
+        assert(index >= 0);
+        x = chunk_read_int32(c, in, __LINE__);
+        y = chunk_read_int32(c, in, __LINE__);
+        z = chunk_read_int32(c, in, __LINE__);
+        if (version == 1) { // Previous version blocks pos.
+            x -= 8; y -= 8; z -= 8;
+        }
+        chunk_read_int32(c, in, __LINE__);
+        data = hash_find_at(blocks_table, index);
+        assert(data);
+        volume_blit(volume, data->v, x, y, z, 16, 16, 16, NULL);
+    }
+}
+
 int load_from_file(const char *path, bool replace)
 {
     layer_t *layer, *layer_tmp, *active_layer = NULL;
@@ -506,11 +586,10 @@ int load_from_file(const char *path, bool replace)
     FILE *in;
     char magic[4] = {};
     uint8_t *voxel_data;
-    int nb_blocks;
     int w, h, bpp;
     uint8_t *png;
     chunk_t c;
-    int i, index, version, x, y, z, material_idx = 0;
+    int i, version, material_idx = 0;
     int  dict_value_size;
     char dict_key[256];
     char dict_value[256];
@@ -518,6 +597,7 @@ int load_from_file(const char *path, bool replace)
     int aabb[2][3];
     camera_t *camera, *camera_tmp;
     material_t *mat, *mat_tmp;
+    const tool_t *tool;
 
     in = fopen(path, "rb");
     if (!in) return -1;
@@ -551,6 +631,10 @@ int load_from_file(const char *path, bool replace)
         goxel.image->active_camera = NULL;
 
         memset(&goxel.image->box, 0, sizeof(goxel.image->box));
+        memset(&goxel.image->selection_box, 0,
+               sizeof(goxel.image->selection_box));
+        volume_delete(goxel.image->selection_mask);
+        goxel.image->selection_mask = NULL;
     }
 
     while (chunk_read_start(&c, in)) {
@@ -570,22 +654,7 @@ int load_from_file(const char *path, bool replace)
 
         } else if (strncmp(c.type, "LAYR", 4) == 0) {
             layer = image_add_layer(goxel.image, NULL);
-            nb_blocks = chunk_read_int32(&c, in, __LINE__);
-            assert(nb_blocks >= 0);
-            for (i = 0; i < nb_blocks; i++) {
-                index = chunk_read_int32(&c, in, __LINE__);
-                assert(index >= 0);
-                x = chunk_read_int32(&c, in, __LINE__);
-                y = chunk_read_int32(&c, in, __LINE__);
-                z = chunk_read_int32(&c, in, __LINE__);
-                if (version == 1) { // Previous version blocks pos.
-                    x -= 8; y -= 8; z -= 8;
-                }
-                chunk_read_int32(&c, in, __LINE__);
-                data = hash_find_at(blocks_table, index);
-                assert(data);
-                volume_blit(layer->volume, data->v, x, y, z, 16, 16, 16, NULL);
-            }
+            read_volume_blocks(&c, in, blocks_table, layer->volume, version);
             while ((chunk_read_dict_value(&c, in, dict_key, dict_value,
                                           &dict_value_size, __LINE__))) {
                 if (strcmp(dict_key, "name") == 0)
@@ -646,6 +715,15 @@ int load_from_file(const char *path, bool replace)
                 DICT_CPY("roughness", mat->roughness);
                 DICT_CPY("emission", mat->emission);
             }
+        } else if (strncmp(c.type, "SELE", 4) == 0) {
+            volume_delete(goxel.image->selection_mask);
+            goxel.image->selection_mask = volume_new();
+            read_volume_blocks(&c, in, blocks_table,
+                               goxel.image->selection_mask, version);
+            while ((chunk_read_dict_value(&c, in, dict_key, dict_value,
+                                          &dict_value_size, __LINE__))) {
+                DICT_CPY("box", goxel.image->selection_box);
+            }
         } else if (strncmp(c.type, "IMG ", 4) == 0) {
             while ((chunk_read_dict_value(&c, in, dict_key, dict_value,
                                           &dict_value_size, __LINE__))) {
@@ -660,6 +738,19 @@ int load_from_file(const char *path, bool replace)
                 DICT_CPY("fixed", goxel.rend.light.fixed);
                 DICT_CPY("ambient", goxel.rend.settings.ambient);
                 DICT_CPY("shadow", goxel.rend.settings.shadow);
+            }
+        } else if (strncmp(c.type, "TOOL", 4) == 0) {
+            while ((chunk_read_dict_value(&c, in, dict_key, dict_value,
+                                          &dict_value_size, __LINE__))) {
+                if (strcmp(dict_key, "tool") == 0) {
+                    for (i = 0; i < TOOL_COUNT; i++) {
+                        tool = tool_get(i);
+                        if (tool && strcmp(tool->action_id, dict_value) == 0)
+                            action_exec2(tool->action_idx);
+                    }
+                }
+                DICT_CPY("symmetry", goxel.painter.symmetry);
+                DICT_CPY("symmetry_origin", goxel.painter.symmetry_origin);
             }
         } else {
             // Ignore other blocks.

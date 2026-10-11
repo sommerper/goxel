@@ -241,12 +241,62 @@ static void test_revolve_symmetry(void)
     image_delete(img);
 }
 
+static void test_save_selection(void)
+{
+    const uint8_t white[4] = {255, 255, 255, 255};
+    float box[4][4];
+    int err;
+    if (DEFINED(WIN32)) return; // Don't test on Windows for the moment!
+    bbox_from_extents(box, VEC(1, 2, 3), 4, 5, 6);
+    mat4_copy(box, goxel.image->selection_box);
+    goxel.image->selection_mask = volume_new();
+    volume_set_at(goxel.image->selection_mask, NULL, (int[]){40, 2, 3}, white);
+    save_to_file(goxel.image, "/tmp/goxel_test.gox");
+    image_delete(goxel.image);
+    goxel.image = image_new();
+    err = goxel_import_file("/tmp/goxel_test.gox", NULL);
+    TEST(err == 0);
+    TEST(memcmp(goxel.image->selection_box, box, sizeof(box)) == 0);
+    TEST(has_voxel(goxel.image->selection_mask, 40, 2, 3));
+    TEST(!has_voxel(goxel.image->selection_mask, 0, 0, 0));
+    image_delete(goxel.image);
+    goxel.image = image_new();
+    sys_delete_file("/tmp/goxel_test.gox");
+}
+
+static void test_save_tool(void)
+{
+    const tool_t *tool = goxel.tool;
+    painter_t painter = goxel.painter;
+    int err;
+    if (DEFINED(WIN32)) return; // Don't test on Windows for the moment!
+    action_exec2(ACTION_tool_set_selection);
+    goxel.painter.symmetry = 0b101;
+    vec3_set(goxel.painter.symmetry_origin, 1.5, 2, -3);
+    save_to_file(goxel.image, "/tmp/goxel_test.gox");
+    action_exec2(ACTION_tool_set_brush);
+    goxel.painter.symmetry = 0;
+    vec3_set(goxel.painter.symmetry_origin, 0, 0, 0);
+    err = goxel_import_file("/tmp/goxel_test.gox", NULL);
+    TEST(err == 0);
+    TEST(goxel.tool->id == TOOL_SELECTION);
+    TEST(goxel.painter.symmetry == 0b101);
+    TEST(vec3_equal(goxel.painter.symmetry_origin, VEC(1.5, 2, -3)));
+    action_exec2(tool->action_idx);
+    goxel.painter = painter;
+    image_delete(goxel.image);
+    goxel.image = image_new();
+    sys_delete_file("/tmp/goxel_test.gox");
+}
+
 void tests_run(void)
 {
     test_revolve();
     test_revolve_selection();
     test_revolve_symmetry();
     test_save_active_layer();
+    test_save_selection();
+    test_save_tool();
     test_load_file_v2();
     test_load_file_v1_with_preview();
     test_load_corrupt();
