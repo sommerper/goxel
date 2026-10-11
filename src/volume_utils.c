@@ -187,6 +187,34 @@ static int ring(int i, int j, const float c[2])
     return roundf(hypotf(i + 0.5f - c[0], j + 0.5f - c[1]));
 }
 
+// Add the mirror images of the voxels across the enabled symmetry planes,
+// the same way the painter symmetry mirrors brush strokes.
+void volume_add_symmetry(volume_t *volume, int symmetry,
+                                const float origin[3])
+{
+    volume_t *src;
+    volume_iterator_t iter;
+    volume_accessor_t acc;
+    int i, pos[3], p[3];
+    uint8_t color[4];
+
+    for (i = 0; i < 3; i++) {
+        if (!(symmetry & (1 << i))) continue;
+        src = volume_copy(volume);
+        acc = volume_get_accessor(volume);
+        iter = volume_get_iterator(src,
+                VOLUME_ITER_VOXELS | VOLUME_ITER_SKIP_EMPTY);
+        while (volume_iter(&iter, pos)) {
+            volume_get_at(src, &iter, pos, color);
+            if (color[3] == 0) continue;
+            memcpy(p, pos, sizeof(p));
+            p[i] = roundf(2 * origin[i] - 1) - pos[i];
+            volume_set_at(volume, &acc, p, color);
+        }
+        volume_delete(src);
+    }
+}
+
 // ponytail: scans an r*r square per voxel, so revolving an already solid
 // shape is O(n * r^2); dedupe (height, ring) pairs first if that gets slow.
 void volume_revolve(volume_t *volume, int axis, const float center[3])

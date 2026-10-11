@@ -179,6 +179,19 @@ void volume_stretch(volume_t *volume, const int dir[3], int n);
  */
 void volume_revolve(volume_t *volume, int axis, const float center[3]);
 
+/*
+ * Function: volume_add_symmetry
+ * Add the mirror images of the voxels across symmetry planes, the same way
+ * the painter symmetry mirrors brush strokes.
+ *
+ * Parameters:
+ *   volume   - The volume to mirror.
+ *   symmetry - Bitfield X Y Z of planes, like <painter_t>.
+ *   origin   - Position of the symmetry planes.
+ */
+void volume_add_symmetry(volume_t *volume, int symmetry,
+                         const float origin[3]);
+
 void volume_shift_alpha(volume_t *volume, int v);
 
 // Compute the selection mask for a given condition.

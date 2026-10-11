@@ -103,6 +103,8 @@ static void extrude(
         vec3_iaddk(plane[3], normal, -0.5);
         box_move_face(box, snap_face, pos, box);
         volume_extrude(tmp_volume, plane, box);
+        volume_add_symmetry(tmp_volume, goxel.painter.symmetry,
+                            goxel.painter.symmetry_origin);
         volume_merge(volume, tmp_volume, MODE_OVER, NULL);
     }
     if (delta < 0) {
@@ -110,6 +112,8 @@ static void extrude(
         vec3_imul(plane[2], -1.0);
         vec3_iaddk(plane[3], normal, -0.5);
         volume_extrude(tmp_volume, plane, box);
+        volume_add_symmetry(tmp_volume, goxel.painter.symmetry,
+                            goxel.painter.symmetry_origin);
         volume_merge(volume, tmp_volume, MODE_SUB, NULL);
     }
     volume_delete(tmp_volume);
