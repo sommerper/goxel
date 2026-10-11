@@ -796,6 +796,7 @@ uint32_t image_get_key(const image_t *img)
         k = material_get_hash(material);
         key = XXH32(&k, sizeof(k), key);
     }
+    key = XXH32(img->box, sizeof(img->box), key);
     key = XXH32(img->selection_box, sizeof(img->selection_box), key);
     k = volume_get_key(img->selection_mask);
     key = XXH32(&k, sizeof(k), key);
