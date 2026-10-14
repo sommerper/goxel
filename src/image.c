@@ -779,6 +779,79 @@ void image_revolve_selection(image_t *img, int axis, const int side[3],
     after_key = image_get_key(img);
 }
 
+// center * a * -center, with the translation rounded so that voxels land
+// on voxels.
+static void snap_around(const float center[3], const float a[4][4],
+                        float out[4][4])
+{
+    int i;
+    mat4_set_identity(out);
+    mat4_itranslate(out, center[0], center[1], center[2]);
+    mat4_imul(out, a);
+    mat4_itranslate(out, -center[0], -center[1], -center[2]);
+    for (i = 0; i < 3; i++) out[3][i] = round(out[3][i]);
+}
+
+void image_transform_selection(image_t *img, const float transf[4][4],
+                               int symmetry, const float symmetry_origin[3])
+{
+    // The selection center and the total transformation since the first of
+    // several in a row (the mask key right after the last one tells), so
+    // that we snap the total and the half voxels don't add up.
+    static float center[3];
+    static float total[4][4];
+    static uint64_t after_key = 0;
+    layer_t *layer = img->active_layer;
+    volume_t *mask = img->selection_mask;
+    volume_t *content, *mirror;
+    float prev[4][4], next[4][4], step[4][4], ofs[3];
+    int i, aabb[2][3];
+
+    if (!image_layer_can_edit(img, layer) || !mask) return;
+    if (volume_get_key(mask) != after_key) {
+        if (!volume_get_bbox(mask, aabb, true)) return;
+        for (i = 0; i < 3; i++)
+            center[i] = (aabb[0][i] + aabb[1][i] - 1) / 2.f;
+        mat4_set_identity(total);
+    }
+
+    // Each step goes around the current center: the linear parts compose
+    // and the translations add up.
+    snap_around(center, total, prev);
+    vec3_copy(total[3], ofs);
+    vec3_set(total[3], 0, 0, 0);
+    mat4_mul(transf, total, total);
+    vec3_add(total[3], ofs, total[3]);
+    snap_around(center, total, next);
+    mat4_invert(prev, step);
+    mat4_mul(next, step, step);
+
+    content = volume_copy(layer->volume);
+    volume_merge(content, mask, MODE_INTERSECT, NULL);
+    volume_move(content, step);
+    // With symmetry, the mirror images of the selection turn too.
+    mirror = volume_copy(mask);
+    volume_add_symmetry(mirror, symmetry, symmetry_origin);
+    volume_merge(layer->volume, mirror, MODE_SUB, NULL);
+    volume_delete(mirror);
+    volume_add_symmetry(content, symmetry, symmetry_origin);
+    volume_merge(layer->volume, content, MODE_OVER, NULL);
+    volume_delete(content);
+    volume_move(mask, step);
+    after_key = volume_get_key(mask);
+
+    // The selection box follows.  It goes around the voxels, so its
+    // corners are half a voxel off their positions.
+    if (!box_is_null(img->selection_box)) {
+        mat4_set_identity(next);
+        mat4_itranslate(next, 0.5, 0.5, 0.5);
+        mat4_imul(next, step);
+        mat4_itranslate(next, -0.5, -0.5, -0.5);
+        mat4_mul(next, img->selection_box, img->selection_box);
+        box_get_bbox(img->selection_box, img->selection_box);
+    }
+}
+
 /*
  * Function: image_get_key
  * Return a value that is garantied to change when the image change.

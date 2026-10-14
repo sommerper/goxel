@@ -98,6 +98,25 @@ bool image_layer_can_edit(const image_t *img, const layer_t *layer);
 void image_revolve_selection(image_t *img, int axis, const int side[3],
                              int symmetry, const float symmetry_origin[3]);
 
+/*
+ * Function: image_transform_selection
+ * Rotate, flip, scale or move the selected voxels of the active layer, and
+ * the selection with them, around the center of the selection.  The result
+ * stays on the voxel grid: a quarter turn with an odd and an even side
+ * lands half a voxel off, but four quarter turns in a row get back to the
+ * start.
+ *
+ * Parameters:
+ *   img    - The image.
+ *   transf - The transformation, with the center of the selection at 0.
+ *   symmetry        - Bitfield X Y Z of planes to mirror the result across,
+ *                     like <painter_t>.
+ *   symmetry_origin - Position of the symmetry planes, ignored if
+ *                     symmetry is 0.
+ */
+void image_transform_selection(image_t *img, const float transf[4][4],
+                               int symmetry, const float symmetry_origin[3]);
+
 material_t *image_add_material(image_t *img, material_t *mat);
 void image_delete_material(image_t *img, material_t *mat);
 

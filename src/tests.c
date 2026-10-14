@@ -241,6 +241,51 @@ static void test_revolve_symmetry(void)
     image_delete(img);
 }
 
+static void test_transform_selection(void)
+{
+    const uint8_t white[4] = {255, 255, 255, 255};
+    // An L over x 0..1, y 0..2 is selected, the voxel at 5, 5, 5 is not.
+    const int l[4][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 2, 0}};
+    image_t *img = image_new();
+    volume_t *volume = img->active_layer->volume;
+    float rot[4][4] = MAT4_IDENTITY, flip[4][4] = MAT4_IDENTITY;
+    int i, aabb[2][3];
+
+    img->selection_mask = volume_new();
+    for (i = 0; i < 4; i++) {
+        volume_set_at(volume, NULL, l[i], white);
+        volume_set_at(img->selection_mask, NULL, l[i], white);
+    }
+    volume_set_at(volume, NULL, (int[]){5, 5, 5}, white);
+    mat4_irotate(rot, M_PI / 2, 0, 0, 1);
+
+    // A quarter turn swaps the sides.
+    image_transform_selection(img, rot, 0, NULL);
+    volume_get_bbox(img->selection_mask, aabb, true);
+    TEST(aabb[1][0] - aabb[0][0] == 3 && aabb[1][1] - aabb[0][1] == 2);
+    TEST(has_voxel(volume, 5, 5, 5));
+
+    // A half turn stays in place, four quarter turns get back to the start.
+    image_transform_selection(img, rot, 0, NULL);
+    TEST(has_voxel(volume, 1, 2, 0) && has_voxel(volume, 1, 0, 0));
+    TEST(!has_voxel(volume, 0, 0, 0));
+    image_transform_selection(img, rot, 0, NULL);
+    image_transform_selection(img, rot, 0, NULL);
+    for (i = 0; i < 4; i++) {
+        TEST(has_voxel(volume, l[i][0], l[i][1], l[i][2]));
+        TEST(has_voxel(img->selection_mask, l[i][0], l[i][1], l[i][2]));
+    }
+    TEST(!has_voxel(volume, 1, 1, 0));
+
+    // A flip stays in place too.
+    mat4_iscale(flip, -1, 1, 1);
+    image_transform_selection(img, flip, 0, NULL);
+    TEST(has_voxel(volume, 1, 2, 0) && !has_voxel(volume, 0, 2, 0));
+    TEST(has_voxel(img->selection_mask, 1, 1, 0));
+    TEST(has_voxel(volume, 5, 5, 5));
+    image_delete(img);
+}
+
 static void test_stretch_symmetry(void)
 {
     const uint8_t white[4] = {255, 255, 255, 255};
@@ -333,6 +378,7 @@ void tests_run(void)
     test_revolve_selection();
     test_revolve_symmetry();
     test_stretch_symmetry();
+    test_transform_selection();
     test_save_active_layer();
     test_save_selection();
     test_save_tool();

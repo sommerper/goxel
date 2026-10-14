@@ -93,6 +93,16 @@ static void normalize_box(const float box[4][4], float out[4][4])
     bbox_from_npoints(out, 8, vertices);
 }
 
+// The box around the selected voxels, recomputed when the mask changes.
+static void update_selection_box(tool_move_t *tool)
+{
+    volume_t *mask = goxel.image->selection_mask;
+    if (tool->start_mask_key != volume_get_key(mask)) {
+        volume_get_box(mask, true, tool->box);
+        tool->start_mask_key = volume_get_key(mask);
+    }
+}
+
 static int iter_selection(tool_move_t *tool, const painter_t *painter,
                           const float viewport[4])
 {
@@ -104,10 +114,7 @@ static int iter_selection(tool_move_t *tool, const painter_t *painter,
     volume_t *mask = img->selection_mask;
     volume_t *tmp;
 
-    if (tool->start_mask_key != volume_get_key(mask)) {
-        volume_get_box(mask, true, tool->box);
-        tool->start_mask_key = volume_get_key(mask);
-    }
+    update_selection_box(tool);
 
     box_edit_state = box_edit(tool->box, GIZMO_TRANSLATION, transf);
     if (!box_edit_state) return 0;
@@ -329,13 +336,27 @@ static void gui_origin(layer_t *layer)
 
 }
 
-static int gui(tool_t *tool)
+static int gui(tool_t *tool_)
 {
-    layer_t *layer;
+    tool_move_t *tool = (void *)tool_;
+    image_t *img = goxel.image;
+    layer_t *layer = img->active_layer;
     float mat[4][4] = MAT4_IDENTITY;
+    float pos[4][4] = MAT4_IDENTITY;
+    int aabb[2][3];
 
-    layer = goxel.image->active_layer;
-    if (input_tranform(layer->mat, mat)) {
+    // Like iter: with a selection, transform the selected voxels, and show
+    // the selection corner as the position.
+    if (    !layer->shape && img->selection_mask &&
+            !volume_is_empty(img->selection_mask)) {
+        update_selection_box(tool);
+        bbox_to_aabb(tool->box, aabb);
+        vec3_set(pos[3], aabb[0][0], aabb[0][1], aabb[0][2]);
+        if (input_tranform(pos, mat)) {
+            image_transform_selection(img, mat, goxel.painter.symmetry,
+                                      goxel.painter.symmetry_origin);
+        }
+    } else if (input_tranform(layer->mat, mat)) {
         move(layer, mat);
     }
     if (gui_is_item_deactivated()) {
