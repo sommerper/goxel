@@ -592,7 +592,7 @@ int load_from_file(const char *path, bool replace)
     int w, h, bpp;
     uint8_t *png;
     chunk_t c;
-    int i, version, material_idx = 0;
+    int i, version, material_idx = 0, material_offset = 0;
     int  dict_value_size;
     char dict_key[256];
     char dict_value[256];
@@ -639,6 +639,8 @@ int load_from_file(const char *path, bool replace)
         volume_delete(goxel.image->selection_mask);
         goxel.image->selection_mask = NULL;
     }
+    // Loaded materials are appended after the existing ones.
+    DL_COUNT(goxel.image->materials, mat, material_offset);
 
     while (chunk_read_start(&c, in)) {
         if (strncmp(c.type, "BL16", 4) == 0) {
@@ -692,7 +694,8 @@ int load_from_file(const char *path, bool replace)
                 if (strcmp(dict_key, "active") == 0)
                     active_layer = layer;
                 if (DICT_CPY("material", material_idx))
-                    layer->material = get_material(goxel.image, material_idx);
+                    layer->material = get_material(
+                            goxel.image, material_idx + material_offset);
             }
         } else if (strncmp(c.type, "CAMR", 4) == 0) {
             camera = camera_new("unnamed");

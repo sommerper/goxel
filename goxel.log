@@ -1,0 +1,80 @@
+glfw error 65548 (Wayland: The platform does not support setting the window position)
+glfw error 65548 (Wayland: The platform does not support setting the window icon)
+0.000: Run script data/scripts/test.js                              on_script (src/script.c:901)
+src/../ext_src/quickjs/quickjs.c:32597:13: runtime error: null pointer passed as argument 2, which is declared to never be null
+src/../ext_src/quickjs/quickjs.c:32596:13: runtime error: null pointer passed as argument 2, which is declared to never be null
+0.005: Register script FillRandom                                   js_goxel_registerScript (src/script.c:719)
+0.005: Register script Dilate                                       js_goxel_registerScript (src/script.c:719)
+0.005: Register script VoxelSphere                                  js_goxel_registerScript (src/script.c:719)
+0.005: Loading scripts from /home/ps/.config/goxel/scripts
+         on_dir (src/script.c:922)
+=================================================================
+==614870==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7c169dfa9080 at pc 0x7f96a16e4937 bp 0x7fffcf5ad290 sp 0x7fffcf5aca50
+READ of size 4 at 0x7c169dfa9080 thread T0
+    #0 0x7f96a16e4936 in memcpy (/lib64/libasan.so.8+0xe4936) (BuildId: d3cb6206dff19da52969c009f4cd93611901c478)
+    #1 0x560696c8388a in parse_png src/palette.c:130
+    #2 0x560696c84bae in on_palette2 src/palette.c:181
+    #3 0x560696fcf06c in sys_list_dir src/system.c:130
+    #4 0x560696c852ed in palette_load_all src/palette.c:203
+    #5 0x5606966fce8b in goxel_init src/goxel.c:459
+    #6 0x560696be6128 in main src/main.c:469
+    #7 0x7f969fa12574 in __libc_start_call_main (/lib64/libc.so.6+0x3574) (BuildId: 92b5376d35bb29c098175948cf3e7cbcae3aeae1)
+    #8 0x7f969fa12627 in __libc_start_main@GLIBC_2.2.5 (/lib64/libc.so.6+0x3627) (BuildId: 92b5376d35bb29c098175948cf3e7cbcae3aeae1)
+    #9 0x560696547d60 in _start (/home/ps/dev_github/sommerper_goxel/goxel/goxel+0x155dd60) (BuildId: b382613d3317cd018cef103c8d18dc6198bfb3e7)
+
+0x7c169dfa9080 is located 0 bytes after 96-byte region [0x7c169dfa9020,0x7c169dfa9080)
+allocated by thread T0 here:
+    #0 0x7f96a16e6f2b in malloc (/lib64/libasan.so.8+0xe6f2b) (BuildId: d3cb6206dff19da52969c009f4cd93611901c478)
+    #1 0x56069706c474 in stbi__malloc ext_src/stb/stb_image.h:987
+    #2 0x56069706c872 in stbi__malloc_mad2 ext_src/stb/stb_image.h:1051
+    #3 0x5606970b27fa in stbi__expand_png_palette ext_src/stb/stb_image.h:4961
+    #4 0x5606970b788c in stbi__parse_png_file ext_src/stb/stb_image.h:5229
+    #5 0x5606970b7c5f in stbi__do_png ext_src/stb/stb_image.h:5267
+    #6 0x5606970b8cfc in stbi__png_load ext_src/stb/stb_image.h:5299
+    #7 0x56069706cdfc in stbi__load_main ext_src/stb/stb_image.h:1147
+    #8 0x56069706d8ff in stbi__load_and_postprocess_8bit ext_src/stb/stb_image.h:1263
+    #9 0x56069706ec75 in stbi_load_from_memory ext_src/stb/stb_image.h:1433
+    #10 0x5606970df2c4 in img_read_from_mem src/utils/img.c:83
+    #11 0x560696c8362f in parse_png src/palette.c:125
+    #12 0x560696c84bae in on_palette2 src/palette.c:181
+    #13 0x560696fcf06c in sys_list_dir src/system.c:130
+    #14 0x560696c852ed in palette_load_all src/palette.c:203
+    #15 0x5606966fce8b in goxel_init src/goxel.c:459
+    #16 0x560696be6128 in main src/main.c:469
+    #17 0x7f969fa12574 in __libc_start_call_main (/lib64/libc.so.6+0x3574) (BuildId: 92b5376d35bb29c098175948cf3e7cbcae3aeae1)
+    #18 0x7f969fa12627 in __libc_start_main@GLIBC_2.2.5 (/lib64/libc.so.6+0x3627) (BuildId: 92b5376d35bb29c098175948cf3e7cbcae3aeae1)
+    #19 0x560696547d60 in _start (/home/ps/dev_github/sommerper_goxel/goxel/goxel+0x155dd60) (BuildId: b382613d3317cd018cef103c8d18dc6198bfb3e7)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow src/palette.c:130 in parse_png
+Shadow bytes around the buggy address:
+  0x7c169dfa8e00: fa fa fa fa fd fd fd fd fd fd fd fd fd fd fd fd
+  0x7c169dfa8e80: fa fa fa fa fd fd fd fd fd fd fd fd fd fd fd fd
+  0x7c169dfa8f00: fa fa fa fa fd fd fd fd fd fd fd fd fd fd fd fd
+  0x7c169dfa8f80: fa fa fa fa fd fd fd fd fd fd fd fd fd fd fd fd
+  0x7c169dfa9000: fa fa fa fa 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7c169dfa9080:[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c169dfa9100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c169dfa9180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c169dfa9200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c169dfa9280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7c169dfa9300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==614870==ABORTING

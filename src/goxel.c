@@ -1316,8 +1316,6 @@ void goxel_render_view(const float viewport[4], bool render_mode)
     render_submit(&goxel.rend, viewport, goxel.back_color);
 }
 
-void image_update(image_t *img);
-
 const volume_t *goxel_get_layers_volume(const image_t *img)
 {
     uint32_t key = 0, k;

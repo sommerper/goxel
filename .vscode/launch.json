@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Open Desktop (noVNC)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "echo 'Desktop port: 6082'",
+      "auto": true,
+      "serverReadyAction": {
+        "pattern": "Desktop port: ([0-9]+)",
+        "action": "openIntegratedBrowser",
+        "uriFormat": "http://127.0.0.1:%s/vnc_lite.html?autoconnect=1&resize=scale"
+      }
+    }
+  ]
+}
