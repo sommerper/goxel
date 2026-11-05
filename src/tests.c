@@ -17,6 +17,7 @@
  */
 
 #include "goxel.h"
+#include "file_format.h"
 
 #include "utils/b64.h"
 
@@ -371,8 +372,104 @@ static void test_undo_keeps_active_layer(void)
     goxel.image = image_new();
 }
 
+static void test_png_slices(void)
+{
+    extern int g_png_slices;
+    extern int png_slices_suggest(const char *data, int size,
+                                  const uint8_t *img, int w, int h);
+    static uint8_t guess_sheet[72 * 12 * 4];
+    int i, k, w, h, size, bpp = 4;
+    char *data;
+    uint8_t *img;
+    const char *path = "/tmp/goxel_test.png";
+    const uint8_t red[4] = {255, 0, 0, 255};
+    const uint8_t green[4] = {0, 255, 0, 255};
+    const uint8_t blue[4] = {0, 0, 255, 255};
+    const uint8_t sheet[16] = {255, 0, 0, 255, 0, 0, 0, 0,
+                               0, 0, 0, 0, 0, 255, 0, 255};
+    const file_format_t *f = file_format_get(NULL, "png slices", "w");
+    volume_t *volume = goxel.image->active_layer->volume;
+    volume_t *expected = volume_new();
+    layer_t *first;
+
+    if (DEFINED(WIN32)) return;
+    // Asymmetric, so that a flipped axis or slice order changes the result.
+    volume_set_at(volume, NULL, (int[]){10, 20, 30}, red);
+    volume_set_at(volume, NULL, (int[]){12, 20, 30}, green);
+    volume_set_at(volume, NULL, (int[]){10, 21, 33}, blue);
+    // That 3 x 2 x 4 model comes back centered.
+    volume_set_at(expected, NULL, (int[]){-1, -1, -2}, red);
+    volume_set_at(expected, NULL, (int[]){1, -1, -2}, green);
+    volume_set_at(expected, NULL, (int[]){-1, 0, 1}, blue);
+
+    TEST(f->export_func(f, goxel.image, path) == 0);
+    image_delete(goxel.image);
+    goxel.image = image_new();
+
+    // The export saves the slice count for the preview to start with.
+    data = read_file(path, &size);
+    img = img_read_from_mem(data, size, &w, &h, &bpp);
+    TEST(png_slices_suggest(data, size, img, w, h) == 4);
+    free(data);
+    free(img);
+
+    g_png_slices = 4;
+    TEST(goxel_import_file(path, "png slices") == 0);
+    TEST(g_png_slices == 0);
+    TEST(volume_crc32(goxel.image->active_layer->volume) ==
+         volume_crc32(expected));
+
+    // Undo, then import again.
+    image_undo(goxel.image);
+    TEST(image_is_empty(goxel.image));
+    g_png_slices = 4;
+    TEST(goxel_import_file(path, "png slices") == 0);
+
+    // Importing over existing voxels goes to a new layer.
+    first = goxel.image->active_layer;
+    g_png_slices = 4;
+    TEST(goxel_import_file(path, "png slices") == 0);
+    TEST(goxel.image->active_layer != first);
+    TEST(volume_crc32(first->volume) == volume_crc32(expected));
+
+    // A png dropped on the window isn't taken for slices.
+    TEST(goxel_import_file(path, NULL) != 0);
+
+    // The count picked for a png without one: 2 slices of 2 x 1, with a voxel
+    // in the first and last corners.
+    img_write(sheet, 4, 1, 4, path);
+    image_delete(goxel.image);
+    goxel.image = image_new();
+    g_png_slices = 2;
+    TEST(goxel_import_file(path, "png slices") == 0);
+    volume = goxel.image->active_layer->volume;
+    TEST(has_voxel(volume, -1, 0, -1));
+    TEST(!has_voxel(volume, 0, 0, -1));
+    TEST(has_voxel(volume, 0, 0, 0));
+
+    // Guess the count of 6 slices of 12 x 12 with an L shape in each.  It
+    // also ignores a saved count that can't be right.
+    for (k = 0; k < 6; k++)
+    for (i = 2; i < 10; i++) {
+        memset(&guess_sheet[(i * 72 + k * 12 + 2) * 4], 255, 4);
+        memset(&guess_sheet[(9 * 72 + k * 12 + i) * 4], 255, 4);
+    }
+    TEST(png_slices_suggest(NULL, 0, guess_sheet, 72, 12) == 6);
+    img_write(guess_sheet, 72, 12, 4, path);
+    img_png_add_text(path, "goxel:slices", "5");
+    data = read_file(path, &size);
+    TEST(png_slices_suggest(data, size, guess_sheet, 72, 12) == 6);
+    free(data);
+
+    volume_delete(expected);
+    image_delete(goxel.image);
+    goxel.image = image_new();
+    sys_delete_file(path);
+}
+
 void tests_run(void)
 {
+    test_png_slices();
     test_undo_keeps_active_layer();
     test_revolve();
     test_revolve_selection();

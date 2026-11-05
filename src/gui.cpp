@@ -1701,6 +1701,30 @@ void gui_popup_bottom_end(void)
     gui_row_end();
 }
 
+void gui_slices_preview(const struct texture *tex, int slices)
+{
+    const float scale = ImMin((ImGui::GetIO().DisplaySize.x - 60) / tex->w, 4.f);
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    const ImVec2 p1(p0.x + tex->w * scale, p0.y + tex->h * scale);
+    const ImU32 col = (slices >= 1 && tex->w % slices == 0) ?
+                      0xff00ff00 : 0xff0000ff;
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    float x;
+    int i;
+
+    ImGui::Dummy(ImVec2(p1.x - p0.x, p1.y - p0.y));
+    // Mid gray, so that both dark and light pixels stay visible.
+    draw_list->AddRectFilled(p0, p1, 0xff808080);
+    draw_list->AddImage((intptr_t)tex->tex, p0, p1, ImVec2(0, 0),
+                        ImVec2((float)tex->w / tex->tex_w,
+                               (float)tex->h / tex->tex_h));
+    if (slices < 1 || slices > tex->w) return;
+    for (i = 0; i <= slices; i++) {
+        x = floor(p0.x + (p1.x - p0.x) * i / slices) + 0.5f;
+        draw_list->AddLine(ImVec2(x, p0.y), ImVec2(x, p1.y), col);
+    }
+}
+
 void gui_alert(const char *title, const char *msg)
 {
     gui_open_popup(title, 0, msg ? strdup(msg) : NULL, alert_popup);

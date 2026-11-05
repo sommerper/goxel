@@ -1524,10 +1524,12 @@ int goxel_import_file(const char *path, const char *format)
 
     if (image_was_empty) {
         image_auto_resize(goxel.image);
-        assert(!goxel.image->export_path);
+        // Already set if the image got emptied since the last import.
+        free(goxel.image->export_path);
         goxel.image->export_path = strdup(path);
         goxel.image->export_fmt = f->name;
     }
+    image_history_push(goxel.image);
 
     return 0;
 }

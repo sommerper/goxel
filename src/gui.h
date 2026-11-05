@@ -135,6 +135,13 @@ void gui_enabled_end(void);
 void gui_dummy(int w, int h);
 void gui_spacing(int w);
 
+/*
+ * Function: gui_slices_preview
+ * Show a sheet of slices as large as it fits, with a line at each slice edge:
+ * green if the width splits evenly into that many slices, else red.
+ */
+void gui_slices_preview(const struct texture *tex, int slices);
+
 void gui_alert(const char *title, const char *msg);
 
 void gui_columns(int count);

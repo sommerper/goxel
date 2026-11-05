@@ -35,6 +35,7 @@ struct file_format
                                    const char *path);
     void            (*import_gui)(file_format_t *format);
     int             priority; // Specifies the order of file_format_iter.
+    bool            name_only; // Never picked from a path's extension.
 };
 
 void file_format_register(file_format_t *format);

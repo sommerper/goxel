@@ -24,7 +24,24 @@
 #ifndef IMG_H
 #define IMG_H
 
+#include <stdbool.h>
 #include <stdint.h>
+
+/*
+ * Function: img_png_add_text
+ * Add a text chunk to a png file.
+ */
+void img_png_add_text(const char *path, const char *key, const char *value);
+
+/*
+ * Function: img_png_get_text
+ * Get the value of a text chunk from a png file in memory.
+ *
+ * Return:
+ *   Whether the png has that chunk.
+ */
+bool img_png_get_text(const char *data, int size, const char *key,
+                      char *out, int out_size);
 
 /*
  * Function: img_read

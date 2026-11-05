@@ -157,6 +157,62 @@ void img_write(const uint8_t *img, int w, int h, int bpp, const char *path)
 
 #endif
 
+// A png chunk is: data length, type, data, crc of the type and data, with the
+// numbers as big endian.  The last one is always the 12 bytes IEND.
+
+static void write_be32(uint8_t *p, uint32_t v)
+{
+    p[0] = v >> 24;
+    p[1] = v >> 16;
+    p[2] = v >> 8;
+    p[3] = v;
+}
+
+void img_png_add_text(const char *path, const char *key, const char *value)
+{
+    int size, key_size = strlen(key) + 1, len = key_size + strlen(value);
+    char *data = read_file(path, &size);
+    uint8_t *chunk;
+    FILE *file;
+
+    if (!data) return;
+    chunk = malloc(len + 12);
+    write_be32(chunk, len);
+    memcpy(chunk + 4, "tEXt", 4);
+    memcpy(chunk + 8, key, key_size);
+    memcpy(chunk + 8 + key_size, value, len - key_size);
+    write_be32(chunk + 8 + len, stbiw__crc32(chunk + 4, len + 4));
+
+    file = fopen(path, "wb");
+    if (file) {
+        fwrite(data, 1, size - 12, file);
+        fwrite(chunk, 1, len + 12, file);
+        fwrite(data + size - 12, 1, 12, file);
+        fclose(file);
+    }
+    free(chunk);
+    free(data);
+}
+
+bool img_png_get_text(const char *data, int size, const char *key,
+                      char *out, int out_size)
+{
+    const uint8_t *p = (const uint8_t*)data;
+    const size_t key_size = strlen(key) + 1;
+    size_t i, len;
+
+    for (i = 8; i + 12 <= size; i += 12 + len) { // Skip the png signature.
+        len = (size_t)p[i] << 24 | p[i + 1] << 16 | p[i + 2] << 8 | p[i + 3];
+        if (len > size - i - 12) return false; // Corrupted file.
+        if (memcmp(p + i + 4, "tEXt", 4) != 0 || len < key_size) continue;
+        if (memcmp(p + i + 8, key, key_size) != 0) continue;
+        snprintf(out, out_size, "%.*s", (int)(len - key_size),
+                 data + i + 8 + key_size);
+        return true;
+    }
+    return false;
+}
+
 uint8_t *img_write_to_mem(const uint8_t *img, int w, int h, int bpp, int *size)
 {
     return stbi_write_png_to_mem((void*)img, 0, w, h, bpp, size);
