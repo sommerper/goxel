@@ -385,7 +385,8 @@ static void filters_to_nfd_spec(
 
     buf[0] = '\0';
     for (i = 0; filters[i]; i++) {
-        len += snprintf(buf + len, buf_size - len, "%s", filters[i] + 2);
+        len += snprintf(buf + len, buf_size - len, "%s%s",
+                        i ? "," : "", filters[i] + 2);
     }
 }
 
