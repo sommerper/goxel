@@ -116,7 +116,7 @@ bool str_startswith(const char *s1, const char *s2)
 bool str_replace_ext(const char *str, const char *new_ext,
                      char *out, size_t out_size)
 {
-    char *pos;
+    const char *pos;
     assert(str && new_ext && out);
     pos = strrchr(str, '.');
     if (!pos) return false;

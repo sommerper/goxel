@@ -1,3 +1,4 @@
+set -e
 make
 mkdir -p ~/bin
 cp ./goxel ~/bin/goxel

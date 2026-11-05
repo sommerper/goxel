@@ -24,7 +24,7 @@
 
 char *path_dirname(const char *path, char *out, size_t size)
 {
-    char *sep;
+    const char *sep;
     int len;
 
     assert(path);
@@ -46,7 +46,7 @@ char *path_dirname(const char *path, char *out, size_t size)
 
 char *path_basename(const char *path, char *out, size_t size)
 {
-    char *sep;
+    const char *sep;
     int len;
 
     assert(path);
