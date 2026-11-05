@@ -208,6 +208,7 @@ typedef struct gui_t {
     } groups[16];
 
     float scale;
+    float font_scale; // Scale the fonts texture was built with.
 
 } gui_t;
 
@@ -233,12 +234,8 @@ void gui_set_scale(float s)
         s = 1;
     }
     gui_create();
+    // We can be in the middle of a frame: gui_init rebuilds the fonts.
     gui->scale = s;
-
-    if (gui->initialized) {
-        ImGuiIO& io = ImGui::GetIO();
-        io.Fonts->TexID = 0; // Note: this leaks the texture.
-    }
 }
 
 static void on_click(void) {
@@ -421,6 +418,7 @@ static void load_fonts_texture()
 
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
+    GL(glDeleteTextures(1, (GLuint*)&io.Fonts->TexID));
     GLuint tex_id;
     GL(glGenTextures(1, &tex_id));
     GL(glActiveTexture(GL_TEXTURE0));
@@ -430,6 +428,7 @@ static void load_fonts_texture()
     GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
                     GL_RGBA, GL_UNSIGNED_BYTE, pixels));
     io.Fonts->TexID = (intptr_t)tex_id;
+    gui->font_scale = gui->scale;
 }
 
 static void init_ImGui(void)
@@ -488,7 +487,7 @@ static void gui_init(void)
     }
 
     ImGuiIO& io = ImGui::GetIO();
-    if (!io.Fonts->TexID) load_fonts_texture();
+    if (!io.Fonts->TexID || gui->font_scale != gui->scale) load_fonts_texture();
 }
 
 void gui_release(void)
